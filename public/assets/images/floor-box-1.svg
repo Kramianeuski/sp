@@ -1,0 +1,9 @@
+<svg width="640" height="480" viewBox="0 0 640 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="480" rx="24" fill="#F8FAFC"/>
+  <rect x="80" y="90" width="480" height="300" rx="24" fill="#E2E8F0" stroke="#CBD5F5" stroke-width="3"/>
+  <rect x="140" y="150" width="360" height="180" rx="18" fill="#FFFFFF" stroke="#94A3B8" stroke-width="3"/>
+  <rect x="180" y="190" width="120" height="100" rx="12" fill="#E5E7EB"/>
+  <rect x="340" y="190" width="120" height="100" rx="12" fill="#E5E7EB"/>
+  <text x="120" y="60" font-family="Arial, sans-serif" font-size="20" fill="#0F172A">System Power SP01-0212</text>
+  <text x="120" y="420" font-family="Arial, sans-serif" font-size="14" fill="#475569">Floor box sample view</text>
+</svg>

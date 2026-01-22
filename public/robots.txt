@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /*?*
+Allow: /
+Sitemap: https://systempower.example/sitemap.xml

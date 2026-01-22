@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://systempower.example/ru/</loc></url>
+  <url><loc>https://systempower.example/ru/about/</loc></url>
+  <url><loc>https://systempower.example/ru/manufacturing/</loc></url>
+  <url><loc>https://systempower.example/ru/documentation/</loc></url>
+  <url><loc>https://systempower.example/ru/support/</loc></url>
+  <url><loc>https://systempower.example/ru/contacts/</loc></url>
+  <url><loc>https://systempower.example/ru/where-to-buy/</loc></url>
+  <url><loc>https://systempower.example/ru/products/</loc></url>
+  <url><loc>https://systempower.example/en/</loc></url>
+  <url><loc>https://systempower.example/en/about/</loc></url>
+  <url><loc>https://systempower.example/en/manufacturing/</loc></url>
+  <url><loc>https://systempower.example/en/documentation/</loc></url>
+  <url><loc>https://systempower.example/en/support/</loc></url>
+  <url><loc>https://systempower.example/en/contacts/</loc></url>
+  <url><loc>https://systempower.example/en/where-to-buy/</loc></url>
+  <url><loc>https://systempower.example/en/products/</loc></url>
+</urlset>
