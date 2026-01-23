@@ -65,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 $language = current_language($path);
 $segments = array_values(array_filter(explode('/', trim($path, '/'))));
 
+if (count($segments) === 1 && ($segments[0] === 'ru' || $segments[0] === 'en') && $path !== '/' . $segments[0] . '/') {
 if (count($segments) === 1 && ($segments[0] === 'ru' || $segments[0] === 'en')) {
     redirect('/' . $language . '/');
 }
