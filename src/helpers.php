@@ -82,16 +82,96 @@ function slug_from_path(string $path): string
 
 function admin_logged_in(): bool
 {
-    $key = config('admin.session_key');
-
-    return !empty($_SESSION[$key]);
+    return !empty($_SESSION['admin_id']);
 }
 
 function require_admin(): void
 {
     if (!admin_logged_in()) {
-        redirect('/admin/login');
+        $_SESSION['admin_redirect_to'] = $_SERVER['REQUEST_URI'] ?? '/admin/';
+        redirect('/admin/login/');
     }
+}
+
+function csrf_token(): string
+{
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+
+    return $_SESSION['csrf_token'];
+}
+
+function csrf_field(): string
+{
+    return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(csrf_token(), ENT_QUOTES) . '">';
+}
+
+function verify_csrf_token(?string $token): bool
+{
+    if (empty($_SESSION['csrf_token']) || empty($token)) {
+        return false;
+    }
+
+    return hash_equals($_SESSION['csrf_token'], $token);
+}
+
+function admin_log_attempt(string $email, bool $success): void
+{
+    $logDir = __DIR__ . '/../storage/logs';
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0775, true);
+    }
+
+    $payload = [
+        'time' => date('c'),
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+        'email' => $email,
+        'success' => $success ? 1 : 0,
+    ];
+    $line = json_encode($payload, JSON_UNESCAPED_UNICODE) . PHP_EOL;
+    file_put_contents($logDir . '/admin_login.log', $line, FILE_APPEND);
+}
+
+function partners_list(string $language): array
+{
+    if ($language === 'en') {
+        return [
+            [
+                'name' => 'SISSOL',
+                'url' => 'https://sissol.ru',
+                'note' => 'Official distributor',
+            ],
+            [
+                'name' => 'PowerMarket',
+                'url' => 'https://powermarket.example',
+                'note' => 'Wholesale partner',
+            ],
+            [
+                'name' => 'ElectroHub',
+                'url' => 'https://electrohub.example',
+                'note' => 'Regional supplier',
+            ],
+        ];
+    }
+
+    return [
+        [
+            'name' => 'SISSOL',
+            'url' => 'https://sissol.ru',
+            'note' => 'Официальный дистрибьютор',
+        ],
+        [
+            'name' => 'PowerMarket',
+            'url' => 'https://powermarket.example',
+            'note' => 'Оптовый партнёр',
+        ],
+        [
+            'name' => 'ElectroHub',
+            'url' => 'https://electrohub.example',
+            'note' => 'Региональный поставщик',
+        ],
+    ];
 }
 
 function cache_get(string $key): ?string

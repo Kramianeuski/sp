@@ -53,7 +53,7 @@ if ($path === '/robots.txt') {
     exit;
 }
 
-$cacheKey = md5($path);
+$cacheKey = md5($path . '?' . ($_SERVER['QUERY_STRING'] ?? ''));
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $cached = cache_get($cacheKey);
     if ($cached) {
@@ -65,7 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 $language = current_language($path);
 $segments = array_values(array_filter(explode('/', trim($path, '/'))));
 
-if (count($segments) === 1 && ($segments[0] === 'ru' || $segments[0] === 'en') && $path !== '/' . $segments[0] . '/') {
 if (count($segments) === 1 && ($segments[0] === 'ru' || $segments[0] === 'en')) {
     redirect('/' . $language . '/');
 }
@@ -107,14 +106,31 @@ if ($segments[1] ?? '' === 'products' && isset($segments[2])) {
         exit;
     }
 
-    $products = db()->prepare('SELECT p.id, p.slug, pt.name, pt.short_description FROM products p JOIN product_translations pt ON pt.product_id = p.id WHERE p.category_id = ? AND pt.language = ?');
-    $products->execute([$category['id'], $language]);
+    $search = trim($_GET['q'] ?? '');
+    $sort = $_GET['sort'] ?? 'name';
+    $query = 'SELECT p.id, p.slug, p.sku, pt.name, pt.short_description FROM products p JOIN product_translations pt ON pt.product_id = p.id WHERE p.category_id = ? AND pt.language = ?';
+    $params = [$category['id'], $language];
+    if ($search !== '') {
+        $query .= ' AND (pt.name LIKE ? OR p.sku LIKE ?)';
+        $like = '%' . $search . '%';
+        $params[] = $like;
+        $params[] = $like;
+    }
+    if ($sort === 'new') {
+        $query .= ' ORDER BY p.id DESC';
+    } else {
+        $query .= ' ORDER BY pt.name';
+    }
+    $products = db()->prepare($query);
+    $products->execute($params);
 
     ob_start();
     render('category-show', [
         'language' => $language,
         'category' => $category,
         'products' => $products->fetchAll(),
+        'search' => $search,
+        'sort' => $sort,
     ]);
     $content = ob_get_clean();
     cache_put($cacheKey, $content);

@@ -1,10 +1,18 @@
 <section class="page-header">
     <div class="container">
+        <nav class="breadcrumbs">
+            <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/"><?= htmlspecialchars(t('breadcrumb.home', $language), ENT_QUOTES) ?></a>
+            <span>→</span>
+            <span><?= htmlspecialchars($page['h1'], ENT_QUOTES) ?></span>
+        </nav>
         <h1><?= htmlspecialchars($page['h1'], ENT_QUOTES) ?></h1>
-        <p><?= htmlspecialchars($page['title'], ENT_QUOTES) ?></p>
+        <p><?= htmlspecialchars($page['meta_description'] ?? $page['title'], ENT_QUOTES) ?></p>
+        <div class="hero-actions">
+            <a class="button" href="#categories"><?= $language === 'en' ? 'Browse categories' : 'Смотреть категории' ?></a>
+        </div>
     </div>
 </section>
-<section class="category-grid">
+<section class="content-block" id="categories">
     <div class="container">
         <div class="category-grid">
             <?php foreach ($categories as $category) : ?>

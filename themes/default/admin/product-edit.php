@@ -1,6 +1,7 @@
 <?php include __DIR__ . '/partials/header.php'; ?>
 <h1><?= htmlspecialchars(t('admin.product_edit_title', 'ru'), ENT_QUOTES) ?></h1>
 <form method="post" class="form-grid">
+    <?= csrf_field() ?>
     <label>
         <?= htmlspecialchars(t('admin.product_slug', 'ru'), ENT_QUOTES) ?>
         <input type="text" name="slug" value="<?= htmlspecialchars($product['slug'], ENT_QUOTES) ?>">

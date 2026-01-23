@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars(t('admin.panel_title', 'ru'), ENT_QUOTES) ?></title>
+    <meta name="robots" content="noindex,nofollow">
     <link rel="stylesheet" href="/themes/default/admin.css">
 </head>
 <body>
@@ -16,7 +17,10 @@
             <a href="/admin/products"><?= htmlspecialchars(t('admin.nav_products', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/translations"><?= htmlspecialchars(t('admin.nav_translations', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/files"><?= htmlspecialchars(t('admin.nav_files', 'ru'), ENT_QUOTES) ?></a>
-            <a href="/admin/logout"><?= htmlspecialchars(t('admin.logout', 'ru'), ENT_QUOTES) ?></a>
+            <form method="post" action="/admin/logout" class="logout-form">
+                <?= csrf_field() ?>
+                <button type="submit"><?= htmlspecialchars(t('admin.logout', 'ru'), ENT_QUOTES) ?></button>
+            </form>
         </nav>
     </div>
 </header>

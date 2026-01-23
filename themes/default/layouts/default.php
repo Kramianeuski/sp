@@ -99,15 +99,28 @@ if (isset($segments[1])) {
 <body>
 <header class="site-header">
     <div class="container">
-        <a class="logo" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/"><?= htmlspecialchars($settings['brand_name'] ?? '', ENT_QUOTES) ?></a>
-        <nav class="nav">
+        <div class="header-left">
+            <a class="logo" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/"><?= htmlspecialchars($settings['brand_name'] ?? '', ENT_QUOTES) ?></a>
+        </div>
+        <button class="nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="site-nav">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <nav class="nav" id="site-nav">
             <?php foreach ($navItems as $item) : ?>
                 <a href="<?= htmlspecialchars($item['url'], ENT_QUOTES) ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES) ?></a>
             <?php endforeach; ?>
         </nav>
-        <div class="language-switch">
-            <a href="/ru/" <?= $language === 'ru' ? 'class="active"' : '' ?>>RU</a>
-            <a href="/en/" <?= $language === 'en' ? 'class="active"' : '' ?>>EN</a>
+        <div class="header-actions">
+            <div class="region-placeholder">
+                <span class="region-label"><?= $language === 'en' ? 'Region' : 'Регион' ?></span>
+                <span class="region-value"><?= $language === 'en' ? 'All regions' : 'Все регионы' ?></span>
+            </div>
+            <div class="language-switch">
+                <a href="/ru/" <?= $language === 'ru' ? 'class="active"' : '' ?>>RU</a>
+                <a href="/en/" <?= $language === 'en' ? 'class="active"' : '' ?>>EN</a>
+            </div>
         </div>
     </div>
 </header>
@@ -122,10 +135,19 @@ if (isset($segments[1])) {
                 <div class="footer-text"><?= nl2br(htmlspecialchars($settings['footer_text'] ?? '', ENT_QUOTES)) ?></div>
             </div>
             <div>
+                <div class="footer-title"><?= $language === 'en' ? 'Navigation' : 'Навигация' ?></div>
+                <div class="footer-text">
+                    <?php foreach ($navItems as $item) : ?>
+                        <div><a href="<?= htmlspecialchars($item['url'], ENT_QUOTES) ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES) ?></a></div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <div>
                 <div class="footer-title"><?= htmlspecialchars($settings['footer_contacts_title'] ?? '', ENT_QUOTES) ?></div>
                 <div class="footer-text"><?= nl2br(htmlspecialchars($settings['footer_contacts'] ?? '', ENT_QUOTES)) ?></div>
             </div>
         </div>
+        <div class="footer-meta">© <?= date('Y') ?> System Power</div>
     </div>
 </footer>
 <script type="application/ld+json">
@@ -143,6 +165,25 @@ if (isset($segments[1])) {
     '@type' => 'BreadcrumbList',
     'itemListElement' => $breadcrumbs,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?>
+</script>
+<script>
+    const header = document.querySelector('.site-header');
+    const navToggle = document.querySelector('.nav-toggle');
+    if (navToggle) {
+        navToggle.addEventListener('click', () => {
+            const isOpen = document.body.classList.toggle('nav-open');
+            navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+    }
+    const onScroll = () => {
+        if (window.scrollY > 12) {
+            header?.classList.add('is-compact');
+        } else {
+            header?.classList.remove('is-compact');
+        }
+    };
+    window.addEventListener('scroll', onScroll);
+    onScroll();
 </script>
 </body>
 </html>

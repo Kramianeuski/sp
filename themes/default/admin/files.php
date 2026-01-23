@@ -1,6 +1,7 @@
 <?php include __DIR__ . '/partials/header.php'; ?>
 <h1><?= htmlspecialchars(t('admin.files_title', 'ru'), ENT_QUOTES) ?></h1>
 <form method="post" enctype="multipart/form-data" class="form-grid">
+    <?= csrf_field() ?>
     <label>
         <?= htmlspecialchars(t('admin.file_upload', 'ru'), ENT_QUOTES) ?>
         <input type="file" name="file">
