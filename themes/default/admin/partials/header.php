@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><?= htmlspecialchars(t('admin.panel_title', 'ru'), ENT_QUOTES) ?></title>
+    <link rel="stylesheet" href="/themes/default/admin.css">
+</head>
+<body>
+<header class="admin-header">
+    <div class="admin-container">
+        <div class="admin-brand"><?= htmlspecialchars(t('admin.panel_title', 'ru'), ENT_QUOTES) ?></div>
+        <nav>
+            <a href="/admin/pages"><?= htmlspecialchars(t('admin.nav_pages', 'ru'), ENT_QUOTES) ?></a>
+            <a href="/admin/categories"><?= htmlspecialchars(t('admin.nav_categories', 'ru'), ENT_QUOTES) ?></a>
+            <a href="/admin/products"><?= htmlspecialchars(t('admin.nav_products', 'ru'), ENT_QUOTES) ?></a>
+            <a href="/admin/translations"><?= htmlspecialchars(t('admin.nav_translations', 'ru'), ENT_QUOTES) ?></a>
+            <a href="/admin/files"><?= htmlspecialchars(t('admin.nav_files', 'ru'), ENT_QUOTES) ?></a>
+            <a href="/admin/logout"><?= htmlspecialchars(t('admin.logout', 'ru'), ENT_QUOTES) ?></a>
+        </nav>
+    </div>
+</header>
+<main class="admin-container">
