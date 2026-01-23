@@ -106,6 +106,46 @@ if ($path === '/admin/pages') {
     exit;
 }
 
+if ($path === '/admin/pages/create') {
+    $errors = [];
+    $slug = trim($_POST['slug'] ?? '');
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($slug === '') {
+            $errors['slug'] = 'Укажите слаг страницы.';
+        }
+
+        if (empty($errors)) {
+            $pdo = db();
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare('INSERT INTO pages (slug) VALUES (?)');
+            $stmt->execute([$slug]);
+            $pageId = (int) $pdo->lastInsertId();
+            $insertTranslation = $pdo->prepare('INSERT INTO page_translations (page_id, language, title, h1, meta_title, meta_description, canonical, robots, og_title, og_description, indexable) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            foreach (['ru', 'en'] as $language) {
+                $insertTranslation->execute([
+                    $pageId,
+                    $language,
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    1,
+                ]);
+            }
+            $pdo->commit();
+            redirect('/admin/pages/edit?id=' . $pageId . '&lang=ru');
+        }
+    }
+
+    render_partial('admin/page-create', ['errors' => $errors, 'slug' => $slug]);
+    exit;
+}
+
 if ($path === '/admin/pages/edit' && isset($_GET['id'], $_GET['lang'])) {
     $stmt = db()->prepare('SELECT p.id, p.slug, pt.* FROM pages p JOIN page_translations pt ON pt.page_id = p.id WHERE p.id = ? AND pt.language = ?');
     $stmt->execute([$_GET['id'], $_GET['lang']]);
@@ -173,6 +213,46 @@ if ($path === '/admin/categories') {
     exit;
 }
 
+if ($path === '/admin/categories/create') {
+    $errors = [];
+    $slug = trim($_POST['slug'] ?? '');
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($slug === '') {
+            $errors['slug'] = 'Укажите слаг категории.';
+        }
+
+        if (empty($errors)) {
+            $pdo = db();
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare('INSERT INTO categories (slug) VALUES (?)');
+            $stmt->execute([$slug]);
+            $categoryId = (int) $pdo->lastInsertId();
+            $insertTranslation = $pdo->prepare('INSERT INTO category_translations (category_id, language, name, h1, description, meta_title, meta_description, seo_text, official_seller, faq, indexable) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            foreach (['ru', 'en'] as $language) {
+                $insertTranslation->execute([
+                    $categoryId,
+                    $language,
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    1,
+                ]);
+            }
+            $pdo->commit();
+            redirect('/admin/categories/edit?id=' . $categoryId . '&lang=ru');
+        }
+    }
+
+    render_partial('admin/category-create', ['errors' => $errors, 'slug' => $slug]);
+    exit;
+}
+
 if ($path === '/admin/categories/edit' && isset($_GET['id'], $_GET['lang'])) {
     $stmt = db()->prepare('SELECT c.id, c.slug, ct.* FROM categories c JOIN category_translations ct ON ct.category_id = c.id WHERE c.id = ? AND ct.language = ?');
     $stmt->execute([$_GET['id'], $_GET['lang']]);
@@ -206,6 +286,62 @@ if ($path === '/admin/products') {
     $stmt = db()->query('SELECT p.id, p.slug, p.sku, pt.language, pt.name FROM products p JOIN product_translations pt ON pt.product_id = p.id ORDER BY p.id, pt.language');
     $products = $stmt->fetchAll();
     render_partial('admin/products', ['products' => $products]);
+    exit;
+}
+
+if ($path === '/admin/products/create') {
+    $errors = [];
+    $slug = trim($_POST['slug'] ?? '');
+    $sku = trim($_POST['sku'] ?? '');
+    $categoryId = (int) ($_POST['category_id'] ?? 0);
+
+    $stmt = db()->prepare('SELECT c.id, c.slug, ct.name FROM categories c LEFT JOIN category_translations ct ON ct.category_id = c.id AND ct.language = ? ORDER BY c.slug');
+    $stmt->execute(['ru']);
+    $categories = $stmt->fetchAll();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($slug === '') {
+            $errors['slug'] = 'Укажите слаг продукта.';
+        }
+        if ($sku === '') {
+            $errors['sku'] = 'Укажите артикул.';
+        }
+        if ($categoryId <= 0) {
+            $errors['category_id'] = 'Выберите категорию.';
+        }
+
+        if (empty($errors)) {
+            $pdo = db();
+            $pdo->beginTransaction();
+            $insertProduct = $pdo->prepare('INSERT INTO products (category_id, slug, sku) VALUES (?, ?, ?)');
+            $insertProduct->execute([$categoryId, $slug, $sku]);
+            $productId = (int) $pdo->lastInsertId();
+            $insertTranslation = $pdo->prepare('INSERT INTO product_translations (product_id, language, name, h1, short_description, description, meta_title, meta_description, indexable) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            foreach (['ru', 'en'] as $language) {
+                $insertTranslation->execute([
+                    $productId,
+                    $language,
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    1,
+                ]);
+            }
+            $pdo->commit();
+            redirect('/admin/products/edit?id=' . $productId . '&lang=ru');
+        }
+    }
+
+    render_partial('admin/product-create', [
+        'errors' => $errors,
+        'slug' => $slug,
+        'sku' => $sku,
+        'category_id' => $categoryId,
+        'categories' => $categories,
+    ]);
     exit;
 }
 

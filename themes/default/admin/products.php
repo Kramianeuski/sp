@@ -1,5 +1,8 @@
 <?php include __DIR__ . '/partials/header.php'; ?>
-<h1><?= htmlspecialchars(t('admin.products_title', 'ru'), ENT_QUOTES) ?></h1>
+<div class="page-header">
+    <h1><?= htmlspecialchars(t('admin.products_title', 'ru'), ENT_QUOTES) ?></h1>
+    <a class="button-link" href="/admin/products/create"><?= htmlspecialchars(t('admin.add', 'ru'), ENT_QUOTES) ?></a>
+</div>
 <table>
     <thead>
     <tr>
