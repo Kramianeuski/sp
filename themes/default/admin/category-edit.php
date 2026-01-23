@@ -1,6 +1,7 @@
 <?php include __DIR__ . '/partials/header.php'; ?>
 <h1><?= htmlspecialchars(t('admin.category_edit_title', 'ru'), ENT_QUOTES) ?></h1>
 <form method="post" class="form-grid">
+    <?= csrf_field() ?>
     <label>
         <?= htmlspecialchars(t('admin.category_name', 'ru'), ENT_QUOTES) ?>
         <input type="text" name="name" value="<?= htmlspecialchars($category['name'], ENT_QUOTES) ?>">

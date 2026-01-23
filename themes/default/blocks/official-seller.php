@@ -1,18 +1,24 @@
 <?php
-$sellerStmt = db()->prepare('SELECT `value` FROM site_settings WHERE language = ? AND `key` = ?');
-$sellerStmt->execute([$language, 'official_seller_text']);
-$sellerText = $sellerStmt->fetchColumn();
+$partners = partners_list($language);
 ?>
-<section class="official-seller">
+<section class="content-block">
     <div class="container">
-        <div class="seller-card">
-            <div class="seller-content">
-                <h2><?= htmlspecialchars($blockData['title'], ENT_QUOTES) ?></h2>
-                <p><?= nl2br(htmlspecialchars($sellerText ?: $blockData['body'], ENT_QUOTES)) ?></p>
-            </div>
-            <a class="button" href="<?= htmlspecialchars(t('official.seller_link', $language), ENT_QUOTES) ?>" rel="nofollow sponsored" target="_blank">
-                <?= htmlspecialchars(t('official.seller_button', $language), ENT_QUOTES) ?>
-            </a>
+        <div class="section-header">
+            <h2><?= htmlspecialchars($blockData['title'], ENT_QUOTES) ?></h2>
+            <p><?= $language === 'en' ? 'The System Power range is available through verified distributors.' : 'Продукция System Power доступна через проверенных дистрибьюторов.' ?></p>
+        </div>
+        <div class="partner-list">
+            <?php foreach ($partners as $partner) : ?>
+                <div class="partner-card">
+                    <div class="partner-info">
+                        <strong><?= htmlspecialchars($partner['name'], ENT_QUOTES) ?></strong>
+                        <span><?= htmlspecialchars($partner['note'], ENT_QUOTES) ?></span>
+                    </div>
+                    <a class="button secondary" href="<?= htmlspecialchars($partner['url'], ENT_QUOTES) ?>" rel="nofollow sponsored" target="_blank">
+                        <?= $language === 'en' ? 'Visit' : 'Перейти' ?>
+                    </a>
+                </div>
+            <?php endforeach; ?>
         </div>
     </div>
 </section>

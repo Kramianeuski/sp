@@ -3,7 +3,7 @@ $catStmt = db()->prepare('SELECT c.slug, ct.name, ct.description FROM categories
 $catStmt->execute([$language]);
 $categories = $catStmt->fetchAll();
 ?>
-<section class="categories-block">
+<section class="content-block categories-block">
     <div class="container">
         <div class="section-header">
             <h2><?= htmlspecialchars($blockData['title'], ENT_QUOTES) ?></h2>

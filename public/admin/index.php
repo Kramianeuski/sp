@@ -8,35 +8,96 @@ require __DIR__ . '/../../src/bootstrap.php';
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/admin';
 $path = rtrim($path, '/');
+header('X-Robots-Tag: noindex, nofollow');
 
 if ($path === '/admin') {
     redirect('/admin/pages');
 }
 
 if ($path === '/admin/login' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    render_partial('admin/login', ['language' => 'ru']);
+    render_partial('admin/login', ['language' => 'ru', 'email' => '']);
     exit;
 }
 
 if ($path === '/admin/login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $stmt = db()->prepare('SELECT id, password_hash FROM admins WHERE username = ?');
-    $stmt->execute([$_POST['username'] ?? '']);
-    $admin = $stmt->fetch();
-    if ($admin && password_verify($_POST['password'] ?? '', $admin['password_hash'])) {
-        $_SESSION[config('admin.session_key')] = $admin['id'];
-        redirect('/admin/pages');
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $errors = [];
+
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        $errors['form'] = 'Недействительный токен безопасности. Обновите страницу и попробуйте снова.';
     }
 
-    render_partial('admin/login', ['language' => 'ru', 'error' => t('admin.login_failed', 'ru')]);
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors['email'] = 'Введите корректный email.';
+    }
+
+    if ($password === '') {
+        $errors['password'] = 'Введите пароль.';
+    }
+
+    if (empty($errors)) {
+        $stmt = db()->prepare('SELECT * FROM admins WHERE email = ? LIMIT 1');
+        $stmt->execute([$email]);
+        $admin = $stmt->fetch();
+        $now = date('Y-m-d H:i:s');
+        $locked = $admin && !empty($admin['locked_until']) && strtotime($admin['locked_until']) > time();
+
+        if ($admin && $locked) {
+            $errors['form'] = 'Слишком много попыток входа. Попробуйте позже.';
+            admin_log_attempt($email, false);
+        } elseif ($admin && (int) $admin['is_active'] === 1 && password_verify($password, $admin['password_hash'])) {
+            session_regenerate_id(true);
+            $_SESSION['admin_id'] = $admin['id'];
+            $_SESSION['admin_email'] = $admin['email'];
+            $update = db()->prepare('UPDATE admins SET failed_attempts = 0, locked_until = NULL, last_login_at = ? WHERE id = ?');
+            $update->execute([$now, $admin['id']]);
+            admin_log_attempt($email, true);
+            $redirectTo = $_SESSION['admin_redirect_to'] ?? '/admin/';
+            unset($_SESSION['admin_redirect_to']);
+            redirect($redirectTo);
+        } else {
+            if ($admin) {
+                $failedAttempts = (int) $admin['failed_attempts'] + 1;
+                $lockedUntil = null;
+                if ($failedAttempts >= 7) {
+                    $lockedUntil = date('Y-m-d H:i:s', time() + 15 * 60);
+                }
+                $update = db()->prepare('UPDATE admins SET failed_attempts = ?, locked_until = ? WHERE id = ?');
+                $update->execute([$failedAttempts, $lockedUntil, $admin['id']]);
+            }
+            admin_log_attempt($email, false);
+            $errors['form'] = 'Неверный email или пароль.';
+        }
+    }
+
+    render_partial('admin/login', [
+        'language' => 'ru',
+        'error' => $errors['form'] ?? null,
+        'errors' => $errors,
+        'email' => $email,
+    ]);
     exit;
 }
 
-if ($path === '/admin/logout') {
-    unset($_SESSION[config('admin.session_key')]);
-    redirect('/admin/login');
+if ($path === '/admin/logout' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        http_response_code(400);
+        echo 'Invalid CSRF token';
+        exit;
+    }
+    unset($_SESSION['admin_id'], $_SESSION['admin_email']);
+    session_regenerate_id(true);
+    redirect('/admin/login/');
 }
 
 require_admin();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token($_POST['csrf_token'] ?? null)) {
+    http_response_code(400);
+    echo 'Invalid CSRF token';
+    exit;
+}
 
 if ($path === '/admin/pages') {
     $stmt = db()->query('SELECT p.id, p.slug, pt.language, pt.h1 FROM pages p JOIN page_translations pt ON pt.page_id = p.id ORDER BY p.id, pt.language');
