@@ -1,8 +1,20 @@
-CREATE TABLE admins (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(190) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL
-);
+DROP TABLE IF EXISTS
+    product_specs,
+    product_faqs,
+    product_documents,
+    product_images,
+    product_translations,
+    footer_links,
+    products,
+    category_translations,
+    categories,
+    page_blocks,
+    page_translations,
+    pages,
+    navigation_items,
+    site_settings,
+    translations,
+    files;
 
 CREATE TABLE translations (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -169,8 +181,6 @@ CREATE TABLE files (
     file_path VARCHAR(255) NOT NULL
 );
 
-INSERT INTO admins (username, password_hash) VALUES
-('admin', '$2y$12$dFyrNsz86EwKyO3zhvuprO4EI0MHKCHdX8mTm10bFDZy.IKncuUvK');
 
 INSERT INTO site_settings (language, `key`, `value`) VALUES
 ('ru', 'brand_name', 'System Power'),

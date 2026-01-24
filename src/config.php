@@ -5,8 +5,8 @@ declare(strict_types=1);
 return [
     'db' => [
         'dsn' => getenv('DB_DSN') ?: 'mysql:host=127.0.0.1;dbname=system_power;charset=utf8mb4',
-        'user' => getenv('DB_USER') ?: 'root',
-        'pass' => getenv('DB_PASS') ?: '',
+        'user' => getenv('DB_USER') ?: 'system_power',
+        'pass' => getenv('DB_PASS') ?: 'SpPwJs)9kskdH1kalk)9ss#1',
     ],
     'base_url' => getenv('BASE_URL') ?: '',
     'theme' => getenv('THEME') ?: 'default',

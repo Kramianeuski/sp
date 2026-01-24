@@ -1,4 +1,6 @@
-CREATE TABLE IF NOT EXISTS admins (
+DROP TABLE IF EXISTS admins;
+
+CREATE TABLE admins (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   email VARCHAR(191) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
@@ -14,7 +16,8 @@ CREATE TABLE IF NOT EXISTS admins (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO admins (email, password_hash, name, is_active)
-VALUES ('admin@system-power.ru', '$2y$12$uRb6fQ0WFLix5maFmD.ADeiTfDT/hGT7HLAPeJVOB.JpVHG0GsVBy', 'Admin', 1)
+
+VALUES ('admin@system-power.ru', '$2y$10$gacnvPv.WbTsopnH6WazLuJBIY1xSdFGUgniFchmKRmLHUvrDAK7S', 'Admin', 1)
 ON DUPLICATE KEY UPDATE
   password_hash = VALUES(password_hash),
   name = VALUES(name),
