@@ -280,11 +280,33 @@ if ($route === 'products' && $param !== null) {
     $stmt = db()->prepare($query);
     $stmt->execute($params);
 
+    $products = $stmt->fetchAll();
+    $productFacts = [];
+    $productIds = array_column($products, 'id');
+    if ($productIds) {
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        $specStmt = db()->prepare(
+            "SELECT product_id, label, value, unit
+             FROM product_specs
+             WHERE language = ?
+               AND product_id IN ($placeholders)
+             ORDER BY sort_order"
+        );
+        $specStmt->execute(array_merge([$language], $productIds));
+        foreach ($specStmt->fetchAll() as $spec) {
+            if (count($productFacts[$spec['product_id']] ?? []) >= 6) {
+                continue;
+            }
+            $productFacts[$spec['product_id']][] = trim($spec['label'] . ': ' . trim($spec['value'] . ' ' . $spec['unit']));
+        }
+    }
+
     ob_start();
     render('category-show', [
         'language' => $language,
         'category' => $category,
-        'products' => $stmt->fetchAll(),
+        'products' => $products,
+        'productFacts' => $productFacts,
         'search' => $search,
         'sort' => $sort,
     ]);
@@ -330,10 +352,14 @@ if ($route === 'product' && $param !== null) {
     $images->execute([$product['id'], $language]);
 
     $documents = db()->prepare(
-        'SELECT title, file_path
-         FROM product_documents
-         WHERE product_id = ? AND language = ?
-         ORDER BY sort_order'
+        'SELECT d.title, d.file_path
+         FROM document_products dp
+         JOIN documents d ON d.id = dp.document_id
+         WHERE dp.product_id = ?
+           AND d.scope = "product"
+           AND d.language = ?
+           AND d.is_active = 1
+         ORDER BY dp.sort_order, d.sort_order'
     );
     $documents->execute([$product['id'], $language]);
 
@@ -365,6 +391,8 @@ if ($route === 'product' && $param !== null) {
     );
     $related->execute([$product['id'], $language, $product['id']]);
 
+    $partners = product_partners((int) $product['id'], $language);
+
     ob_start();
     render('product-show', [
         'language' => $language,
@@ -374,6 +402,7 @@ if ($route === 'product' && $param !== null) {
         'faqs' => $faqs->fetchAll(),
         'specs' => $specs->fetchAll(),
         'related' => $related->fetchAll(),
+        'productPartners' => $partners,
     ]);
     $content = ob_get_clean();
 

@@ -493,6 +493,150 @@ INSERT INTO `translations` VALUES (1,'ru','hero.products','Продукция'),
 UNLOCK TABLES;
 
 --
+-- Table structure for table `partners`
+--
+
+DROP TABLE IF EXISTS `partners`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `partners` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `type` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'official_distributor',
+  `url` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `logo_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `city` varchar(190) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `lat` decimal(10,6) DEFAULT NULL,
+  `lng` decimal(10,6) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `partners`
+--
+
+LOCK TABLES `partners` WRITE;
+/*!40000 ALTER TABLE `partners` DISABLE KEYS */;
+INSERT INTO `partners` VALUES (1,'official_distributor','https://argument-energo.ru','', 'Москва',55.630141,37.474453,1,1),(2,'official_distributor','https://sissol.ru','', 'Смоленск',54.774769,32.055806,1,2),(3,'marketplace','https://www.vseinstrumenti.ru','', '',NULL,NULL,1,3);
+/*!40000 ALTER TABLE `partners` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `partner_translations`
+--
+
+DROP TABLE IF EXISTS `partner_translations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `partner_translations` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `partner_id` int NOT NULL,
+  `language` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_partner_translation` (`partner_id`,`language`),
+  CONSTRAINT `partner_translations_ibfk_1` FOREIGN KEY (`partner_id`) REFERENCES `partners` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `partner_translations`
+--
+
+LOCK TABLES `partner_translations` WRITE;
+/*!40000 ALTER TABLE `partner_translations` DISABLE KEYS */;
+INSERT INTO `partner_translations` VALUES (1,1,'ru','Аргумент Энерго','Аргумент Энерго специализируется на поставках электротехнической продукции через интернет и для объектов и монтажных организаций.'),(2,1,'en','Argument Energo','Argument Energo delivers electrical products for online procurement and project supply to installation companies.'),(3,2,'ru','ООО «Системные Решения»','ООО «Системные Решения» работает в сфере электроснабжения и электроосвещения более 10 лет. Решения формируются на продукции проверенных торговых марок и поставляются на основании прямых дистрибьюторских контрактов, что позволяет подтверждать происхождение и качество и соблюдать гарантийные обязательства. Компания ориентирована не только на продажу, но и на подбор оптимального решения под задачу. География проектов включает регионы России и страны ЕАЭС.'),(4,2,'en','Systemnye Resheniya LLC','Systemnye Resheniya has 10+ years of experience in power supply and lighting. Solutions are built on verified brands and direct distributor contracts, enabling guaranteed origin and quality. The company focuses on both sales and project-specific selection across Russia and the EAEU.'),(5,3,'ru','ВсеИнструменты','Маркетплейс, которому доверяют миллионы.'),(6,3,'en','VseInstrumenty','Marketplace trusted by millions.');
+/*!40000 ALTER TABLE `partner_translations` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `product_partners`
+--
+
+DROP TABLE IF EXISTS `product_partners`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `product_partners` (
+  `product_id` int NOT NULL,
+  `partner_id` int NOT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`product_id`,`partner_id`),
+  CONSTRAINT `product_partners_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `product_partners_ibfk_2` FOREIGN KEY (`partner_id`) REFERENCES `partners` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `product_partners`
+--
+
+LOCK TABLES `product_partners` WRITE;
+/*!40000 ALTER TABLE `product_partners` DISABLE KEYS */;
+INSERT INTO `product_partners` VALUES (1,1,0),(1,2,1),(1,3,2);
+/*!40000 ALTER TABLE `product_partners` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `documents`
+--
+
+DROP TABLE IF EXISTS `documents`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `documents` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `scope` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'brand',
+  `language` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `doc_type` varchar(190) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `sort_order` int NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `documents`
+--
+
+LOCK TABLES `documents` WRITE;
+/*!40000 ALTER TABLE `documents` DISABLE KEYS */;
+INSERT INTO `documents` VALUES (1,'brand','ru','Технические условия','/storage/uploads/system-power-tu.pdf','ТУ',1,1),(2,'brand','ru','Свидетельство о регистрации','/storage/uploads/system-power-registration.pdf','Регистрация',2,1),(3,'brand','ru','Товарный знак System Power','/storage/uploads/system-power-trademark.pdf','Товарный знак',3,1),(4,'brand','ru','Бренд-бук System Power','/storage/uploads/system-power-brandbook.pdf','Бренд-бук',4,1),(5,'brand','en','Technical specifications','/storage/uploads/system-power-tu.pdf','TU',1,1),(6,'brand','en','Registration certificate','/storage/uploads/system-power-registration.pdf','Registration',2,1),(7,'brand','en','System Power trademark','/storage/uploads/system-power-trademark.pdf','Trademark',3,1),(8,'brand','en','System Power brand book','/storage/uploads/system-power-brandbook.pdf','Brand book',4,1),(9,'product','ru','Паспорт изделия','/storage/uploads/passport-sp01-0212.pdf','',1,1),(10,'product','ru','Инструкция по монтажу и эксплуатации','/storage/uploads/manual-sp01-0212.pdf','',2,1),(11,'product','ru','Схема электрическая','/storage/uploads/scheme-sp01-0212.pdf','',3,1),(12,'product','en','Product passport','/storage/uploads/passport-sp01-0212.pdf','',1,1),(13,'product','en','Installation and operation manual','/storage/uploads/manual-sp01-0212.pdf','',2,1),(14,'product','en','Electrical diagram','/storage/uploads/scheme-sp01-0212.pdf','',3,1);
+/*!40000 ALTER TABLE `documents` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `document_products`
+--
+
+DROP TABLE IF EXISTS `document_products`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `document_products` (
+  `document_id` int NOT NULL,
+  `product_id` int NOT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`document_id`,`product_id`),
+  CONSTRAINT `document_products_ibfk_1` FOREIGN KEY (`document_id`) REFERENCES `documents` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `document_products_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `document_products`
+--
+
+LOCK TABLES `document_products` WRITE;
+/*!40000 ALTER TABLE `document_products` DISABLE KEYS */;
+INSERT INTO `document_products` VALUES (9,1,1),(10,1,2),(11,1,3),(12,1,1),(13,1,2),(14,1,3);
+/*!40000 ALTER TABLE `document_products` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Dumping events for database 'system_power'
 --
 

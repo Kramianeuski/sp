@@ -99,6 +99,128 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token($_POST['csrf_tok
     exit;
 }
 
+function detect_csv_delimiter(string $line): string
+{
+    $delimiters = [',', ';', "\t"];
+    $bestDelimiter = ',';
+    $bestCount = 0;
+    foreach ($delimiters as $delimiter) {
+        $count = substr_count($line, $delimiter);
+        if ($count > $bestCount) {
+            $bestDelimiter = $delimiter;
+            $bestCount = $count;
+        }
+    }
+
+    return $bestDelimiter;
+}
+
+function parse_csv_rows(string $path): array
+{
+    $handle = fopen($path, 'rb');
+    if (!$handle) {
+        return [];
+    }
+    $firstLine = fgets($handle);
+    if ($firstLine === false) {
+        fclose($handle);
+        return [];
+    }
+    $delimiter = detect_csv_delimiter($firstLine);
+    rewind($handle);
+    $rows = [];
+    while (($data = fgetcsv($handle, 0, $delimiter)) !== false) {
+        $rows[] = $data;
+    }
+    fclose($handle);
+
+    return $rows;
+}
+
+function column_letter_to_index(string $letters): int
+{
+    $letters = strtoupper($letters);
+    $index = 0;
+    for ($i = 0; $i < strlen($letters); $i++) {
+        $index = $index * 26 + (ord($letters[$i]) - 64);
+    }
+
+    return $index - 1;
+}
+
+function parse_xlsx_rows(string $path): array
+{
+    $zip = new ZipArchive();
+    if ($zip->open($path) !== true) {
+        return [];
+    }
+
+    $sharedStrings = [];
+    $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
+    if ($sharedXml) {
+        $sharedDoc = simplexml_load_string($sharedXml);
+        if ($sharedDoc && isset($sharedDoc->si)) {
+            foreach ($sharedDoc->si as $si) {
+                $text = '';
+                if (isset($si->t)) {
+                    $text = (string) $si->t;
+                } elseif (isset($si->r)) {
+                    foreach ($si->r as $run) {
+                        $text .= (string) $run->t;
+                    }
+                }
+                $sharedStrings[] = $text;
+            }
+        }
+    }
+
+    $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+    $zip->close();
+    if (!$sheetXml) {
+        return [];
+    }
+
+    $sheetDoc = simplexml_load_string($sheetXml);
+    if (!$sheetDoc || !isset($sheetDoc->sheetData)) {
+        return [];
+    }
+
+    $rows = [];
+    $maxCol = 0;
+    foreach ($sheetDoc->sheetData->row as $row) {
+        $rowData = [];
+        foreach ($row->c as $cell) {
+            $ref = (string) $cell['r'];
+            $colLetters = preg_replace('/\d+/', '', $ref);
+            $colIndex = column_letter_to_index($colLetters);
+            $value = (string) $cell->v;
+            $type = (string) $cell['t'];
+            if ($type === 's') {
+                $value = $sharedStrings[(int) $value] ?? '';
+            }
+            $rowData[$colIndex] = $value;
+            $maxCol = max($maxCol, $colIndex);
+        }
+        $normalized = [];
+        for ($i = 0; $i <= $maxCol; $i++) {
+            $normalized[$i] = $rowData[$i] ?? '';
+        }
+        $rows[] = $normalized;
+    }
+
+    return $rows;
+}
+
+function load_spreadsheet_rows(string $path): array
+{
+    $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    if ($extension === 'xlsx') {
+        return parse_xlsx_rows($path);
+    }
+
+    return parse_csv_rows($path);
+}
+
 if ($path === '/admin/pages/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $pageId = (int) ($_POST['id'] ?? 0);
     if ($pageId > 0) {
@@ -584,8 +706,30 @@ if ($path === '/admin/products/edit' && isset($_GET['id'])) {
     $stmt->execute(['ru']);
     $categories = $stmt->fetchAll();
 
+    $partnersStmt = db()->prepare('SELECT p.id, p.type, pt.name FROM partners p JOIN partner_translations pt ON pt.partner_id = p.id AND pt.language = ? ORDER BY p.sort_order, p.id');
+    $partnersStmt->execute(['ru']);
+    $partners = $partnersStmt->fetchAll();
+    $partnerSelectionsStmt = db()->prepare('SELECT partner_id FROM product_partners WHERE product_id = ?');
+    $partnerSelectionsStmt->execute([$product['id']]);
+    $partnerSelections = array_map('intval', array_column($partnerSelectionsStmt->fetchAll(), 'partner_id'));
+
+    $documentsStmt = db()->prepare('SELECT id, title, language FROM documents WHERE scope = "product" ORDER BY language, sort_order, id');
+    $documentsStmt->execute();
+    $documentsByLanguage = ['ru' => [], 'en' => []];
+    foreach ($documentsStmt->fetchAll() as $doc) {
+        $documentsByLanguage[$doc['language']][] = $doc;
+    }
+    $documentSelectionsStmt = db()->prepare('SELECT document_id, sort_order FROM document_products WHERE product_id = ?');
+    $documentSelectionsStmt->execute([$product['id']]);
+    $documentSelections = [];
+    foreach ($documentSelectionsStmt->fetchAll() as $row) {
+        $documentSelections[(int) $row['document_id']] = (int) $row['sort_order'];
+    }
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $updateProduct = db()->prepare('UPDATE products SET sku = ?, slug = ?, category_id = ?, status = ? WHERE id = ?');
+        $pdo = db();
+        $pdo->beginTransaction();
+        $updateProduct = $pdo->prepare('UPDATE products SET sku = ?, slug = ?, category_id = ?, status = ? WHERE id = ?');
         $updateProduct->execute([
             $_POST['sku'] ?? '',
             $_POST['slug'] ?? '',
@@ -594,7 +738,7 @@ if ($path === '/admin/products/edit' && isset($_GET['id'])) {
             $product['id'],
         ]);
 
-        $updateTranslation = db()->prepare('UPDATE product_translations SET name = ?, h1 = ?, short_description = ?, description = ?, meta_title = ?, meta_description = ?, indexable = ? WHERE id = ?');
+        $updateTranslation = $pdo->prepare('UPDATE product_translations SET name = ?, h1 = ?, short_description = ?, description = ?, meta_title = ?, meta_description = ?, indexable = ? WHERE id = ?');
         foreach (['ru', 'en'] as $language) {
             $translation = $translations[$language];
             if (!$translation) {
@@ -611,6 +755,30 @@ if ($path === '/admin/products/edit' && isset($_GET['id'])) {
                 $translation['id'],
             ]);
         }
+
+        $deletePartners = $pdo->prepare('DELETE FROM product_partners WHERE product_id = ?');
+        $deletePartners->execute([$product['id']]);
+        $partnerIds = array_map('intval', $_POST['partner_ids'] ?? []);
+        if ($partnerIds) {
+            $insertPartner = $pdo->prepare('INSERT INTO product_partners (product_id, partner_id, sort_order) VALUES (?, ?, ?)');
+            foreach ($partnerIds as $partnerId) {
+                $insertPartner->execute([$product['id'], $partnerId, 0]);
+            }
+        }
+
+        $deleteDocuments = $pdo->prepare('DELETE FROM document_products WHERE product_id = ?');
+        $deleteDocuments->execute([$product['id']]);
+        $insertDocument = $pdo->prepare('INSERT INTO document_products (document_id, product_id, sort_order) VALUES (?, ?, ?)');
+        foreach (['ru', 'en'] as $language) {
+            $docIds = array_map('intval', $_POST['document_ids_' . $language] ?? []);
+            $docSorts = $_POST['document_sort_' . $language] ?? [];
+            foreach ($docIds as $docId) {
+                $sortOrder = (int) ($docSorts[$docId] ?? 0);
+                $insertDocument->execute([$docId, $product['id'], $sortOrder]);
+            }
+        }
+
+        $pdo->commit();
         redirect('/admin/products');
     }
 
@@ -618,6 +786,10 @@ if ($path === '/admin/products/edit' && isset($_GET['id'])) {
         'product' => $product,
         'translations' => $translations,
         'categories' => $categories,
+        'partners' => $partners,
+        'partnerSelections' => $partnerSelections,
+        'documentsByLanguage' => $documentsByLanguage,
+        'documentSelections' => $documentSelections,
     ]);
     exit;
 }
@@ -627,6 +799,465 @@ if ($path === '/admin/products/specs' && isset($_GET['id'], $_GET['lang'])) {
     $stmt->execute([$_GET['id'], $_GET['lang']]);
     $specs = $stmt->fetchAll();
     render_partial('admin/product-specs', ['specs' => $specs, 'product_id' => $_GET['id'], 'lang' => $_GET['lang']]);
+    exit;
+}
+
+if ($path === '/admin/products/import') {
+    $previewRows = [];
+    $columns = [];
+    $fileToken = '';
+    $importResult = null;
+    $fieldMap = [
+        'category_slug' => 'category_slug',
+        'sku' => 'sku',
+        'product_slug' => 'product_slug',
+        'name_ru' => 'name_ru',
+        'name_en' => 'name_en',
+        'short_description_ru' => 'short_description_ru',
+        'short_description_en' => 'short_description_en',
+        'description_ru' => 'description_ru',
+        'description_en' => 'description_en',
+        'specs_json_ru' => 'specs_json_ru',
+        'specs_json_en' => 'specs_json_en',
+        'images' => 'images',
+        'documents_ru' => 'documents_ru',
+        'documents_en' => 'documents_en',
+    ];
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $importsDir = __DIR__ . '/../../storage/imports';
+        if (!is_dir($importsDir)) {
+            mkdir($importsDir, 0775, true);
+        }
+
+        if (!empty($_POST['run_import']) && !empty($_POST['file_token'])) {
+            $fileToken = basename($_POST['file_token']);
+            $filePath = $importsDir . '/' . $fileToken;
+            $rows = load_spreadsheet_rows($filePath);
+            $columns = $rows[0] ?? [];
+            $mapping = $_POST['mapping'] ?? [];
+            $mode = $_POST['mode'] ?? 'create_new';
+            $importResult = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => []];
+
+            $pdo = db();
+            $categoryStmt = $pdo->prepare('SELECT id FROM categories WHERE slug = ? LIMIT 1');
+            $productBySkuStmt = $pdo->prepare('SELECT id FROM products WHERE sku = ? LIMIT 1');
+            $insertProduct = $pdo->prepare('INSERT INTO products (category_id, slug, sku, status) VALUES (?, ?, ?, ?)');
+            $updateProduct = $pdo->prepare('UPDATE products SET category_id = ?, slug = ?, status = ? WHERE id = ?');
+            $insertTranslation = $pdo->prepare('INSERT INTO product_translations (product_id, language, name, h1, short_description, description, meta_title, meta_description, indexable) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $updateTranslation = $pdo->prepare('UPDATE product_translations SET name = ?, h1 = ?, short_description = ?, description = ? WHERE product_id = ? AND language = ?');
+            $deleteSpecs = $pdo->prepare('DELETE FROM product_specs WHERE product_id = ? AND language = ?');
+            $insertSpec = $pdo->prepare('INSERT INTO product_specs (product_id, language, label, value, unit, type, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)');
+            $deleteImages = $pdo->prepare('DELETE FROM product_images WHERE product_id = ?');
+            $insertImage = $pdo->prepare('INSERT INTO product_images (product_id, language, file_path, alt_text, sort_order) VALUES (?, ?, ?, ?, ?)');
+            $insertDocument = $pdo->prepare('INSERT INTO documents (scope, language, title, file_path, doc_type, sort_order, is_active) VALUES ("product", ?, ?, ?, "", ?, 1)');
+            $insertDocumentLink = $pdo->prepare('INSERT INTO document_products (document_id, product_id, sort_order) VALUES (?, ?, ?)');
+
+            $rows = array_slice($rows, 1);
+            foreach ($rows as $rowIndex => $row) {
+                $getValue = static function (string $key) use ($mapping, $row): string {
+                    if (!isset($mapping[$key]) || $mapping[$key] === '') {
+                        return '';
+                    }
+                    $index = (int) $mapping[$key];
+                    return trim((string) ($row[$index] ?? ''));
+                };
+
+                $categorySlug = $getValue('category_slug');
+                $sku = $getValue('sku');
+                $productSlug = $getValue('product_slug') ?: $sku;
+                $nameRu = $getValue('name_ru');
+                $nameEn = $getValue('name_en');
+
+                if ($categorySlug === '' || $sku === '' || $productSlug === '' || $nameRu === '' || $nameEn === '') {
+                    $importResult['errors'][] = 'Row ' . ($rowIndex + 2) . ': missing required fields.';
+                    continue;
+                }
+
+                $categoryStmt->execute([$categorySlug]);
+                $categoryId = $categoryStmt->fetchColumn();
+                if (!$categoryId) {
+                    $importResult['errors'][] = 'Row ' . ($rowIndex + 2) . ': category not found.';
+                    continue;
+                }
+
+                $productBySkuStmt->execute([$sku]);
+                $existingId = $productBySkuStmt->fetchColumn();
+
+                if ($existingId) {
+                    if ($mode === 'skip_existing') {
+                        $importResult['skipped']++;
+                        continue;
+                    }
+                    if ($mode === 'create_new') {
+                        $importResult['errors'][] = 'Row ' . ($rowIndex + 2) . ': SKU already exists.';
+                        continue;
+                    }
+                }
+
+                $pdo->beginTransaction();
+                if ($existingId) {
+                    $updateProduct->execute([(int) $categoryId, $productSlug, 'published', $existingId]);
+                    $updateTranslation->execute([$nameRu, $nameRu, $getValue('short_description_ru'), $getValue('description_ru'), $existingId, 'ru']);
+                    $updateTranslation->execute([$nameEn, $nameEn, $getValue('short_description_en'), $getValue('description_en'), $existingId, 'en']);
+                    $productId = (int) $existingId;
+                    $importResult['updated']++;
+                } else {
+                    $insertProduct->execute([(int) $categoryId, $productSlug, $sku, 'published']);
+                    $productId = (int) $pdo->lastInsertId();
+                    $insertTranslation->execute([$productId, 'ru', $nameRu, $nameRu, $getValue('short_description_ru'), $getValue('description_ru'), '', '', 1]);
+                    $insertTranslation->execute([$productId, 'en', $nameEn, $nameEn, $getValue('short_description_en'), $getValue('description_en'), '', '', 1]);
+                    $importResult['created']++;
+                }
+
+                foreach (['ru', 'en'] as $lang) {
+                    $specJson = $getValue('specs_json_' . $lang);
+                    if ($specJson !== '') {
+                        $deleteSpecs->execute([$productId, $lang]);
+                        $specData = json_decode($specJson, true);
+                        if (is_array($specData)) {
+                            $order = 0;
+                            foreach ($specData as $spec) {
+                                $insertSpec->execute([
+                                    $productId,
+                                    $lang,
+                                    $spec['label'] ?? '',
+                                    $spec['value'] ?? '',
+                                    $spec['unit'] ?? '',
+                                    $spec['type'] ?? '',
+                                    $order++,
+                                ]);
+                            }
+                        }
+                    }
+                }
+
+                $imagesValue = $getValue('images');
+                if ($imagesValue !== '') {
+                    $deleteImages->execute([$productId]);
+                    $images = preg_split('/\\r?\\n|,|;/', $imagesValue);
+                    $images = array_filter(array_map('trim', $images));
+                    $order = 0;
+                    foreach ($images as $imagePath) {
+                        foreach (['ru', 'en'] as $lang) {
+                            $insertImage->execute([$productId, $lang, $imagePath, $nameRu, $order]);
+                        }
+                        $order++;
+                    }
+                }
+
+                $docsProvided = $getValue('documents_ru') !== '' || $getValue('documents_en') !== '';
+                if ($docsProvided) {
+                    $pdo->prepare('DELETE FROM document_products WHERE product_id = ?')->execute([$productId]);
+                }
+
+                foreach (['ru', 'en'] as $lang) {
+                    $docsValue = $getValue('documents_' . $lang);
+                    if ($docsValue === '') {
+                        continue;
+                    }
+                    $docs = preg_split('/\\r?\\n|,|;/', $docsValue);
+                    $docs = array_filter(array_map('trim', $docs));
+                    $order = 0;
+                    foreach ($docs as $docPath) {
+                        $title = basename($docPath);
+                        $insertDocument->execute([$lang, $title, $docPath, $order]);
+                        $documentId = (int) $pdo->lastInsertId();
+                        $insertDocumentLink->execute([$documentId, $productId, $order]);
+                        $order++;
+                    }
+                }
+
+                $pdo->commit();
+            }
+        } elseif (!empty($_FILES['file']['tmp_name'])) {
+            $name = uniqid('import_', true) . '-' . basename($_FILES['file']['name']);
+            $target = $importsDir . '/' . $name;
+            if (move_uploaded_file($_FILES['file']['tmp_name'], $target)) {
+                $fileToken = $name;
+                $rows = load_spreadsheet_rows($target);
+                if ($rows) {
+                    $columns = $rows[0];
+                    $previewRows = array_slice($rows, 1, 20);
+                }
+            }
+        }
+    }
+
+    render_partial('admin/product-import', [
+        'previewRows' => $previewRows,
+        'columns' => $columns,
+        'fileToken' => $fileToken,
+        'fieldMap' => $fieldMap,
+        'importResult' => $importResult,
+    ]);
+    exit;
+}
+
+if ($path === '/admin/partners/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $partnerId = (int) ($_POST['id'] ?? 0);
+    if ($partnerId > 0) {
+        $stmt = db()->prepare('DELETE FROM partners WHERE id = ?');
+        $stmt->execute([$partnerId]);
+    }
+    redirect('/admin/partners');
+}
+
+if ($path === '/admin/partners') {
+    $stmt = db()->prepare('SELECT p.*, pt.name FROM partners p JOIN partner_translations pt ON pt.partner_id = p.id AND pt.language = ? ORDER BY p.sort_order, p.id');
+    $stmt->execute(['ru']);
+    $partners = $stmt->fetchAll();
+    render_partial('admin/partners', ['partners' => $partners]);
+    exit;
+}
+
+if ($path === '/admin/partners/create') {
+    $partner = [
+        'type' => 'official_distributor',
+        'url' => '',
+        'city' => '',
+        'lat' => '',
+        'lng' => '',
+        'sort_order' => 0,
+        'is_active' => 1,
+    ];
+    $translations = ['ru' => ['name' => '', 'description' => ''], 'en' => ['name' => '', 'description' => '']];
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $pdo = db();
+        $pdo->beginTransaction();
+        $insertPartner = $pdo->prepare('INSERT INTO partners (type, url, logo_path, city, lat, lng, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        $logoPath = '';
+        if (!empty($_FILES['logo']['tmp_name'])) {
+            $name = basename($_FILES['logo']['name']);
+            $target = __DIR__ . '/../../storage/uploads/' . $name;
+            if (move_uploaded_file($_FILES['logo']['tmp_name'], $target)) {
+                $logoPath = '/storage/uploads/' . $name;
+            }
+        }
+        $insertPartner->execute([
+            $_POST['type'] ?? 'official_distributor',
+            $_POST['url'] ?? '',
+            $logoPath,
+            $_POST['city'] ?? '',
+            $_POST['lat'] ?? '',
+            $_POST['lng'] ?? '',
+            isset($_POST['is_active']) ? 1 : 0,
+            (int) ($_POST['sort_order'] ?? 0),
+        ]);
+        $partnerId = (int) $pdo->lastInsertId();
+        $insertTranslation = $pdo->prepare('INSERT INTO partner_translations (partner_id, language, name, description) VALUES (?, ?, ?, ?)');
+        foreach (['ru', 'en'] as $language) {
+            $insertTranslation->execute([
+                $partnerId,
+                $language,
+                $_POST['name_' . $language] ?? '',
+                $_POST['description_' . $language] ?? '',
+            ]);
+        }
+        $pdo->commit();
+        redirect('/admin/partners');
+    }
+
+    render_partial('admin/partner-create', [
+        'partner' => $partner,
+        'translations' => $translations,
+    ]);
+    exit;
+}
+
+if ($path === '/admin/partners/edit' && isset($_GET['id'])) {
+    $stmt = db()->prepare('SELECT * FROM partners WHERE id = ?');
+    $stmt->execute([$_GET['id']]);
+    $partner = $stmt->fetch();
+    if (!$partner) {
+        redirect('/admin/partners');
+    }
+
+    $translationsStmt = db()->prepare('SELECT * FROM partner_translations WHERE partner_id = ?');
+    $translationsStmt->execute([$partner['id']]);
+    $translations = ['ru' => null, 'en' => null];
+    foreach ($translationsStmt->fetchAll() as $translation) {
+        $translations[$translation['language']] = $translation;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $logoPath = $partner['logo_path'] ?? '';
+        if (!empty($_FILES['logo']['tmp_name'])) {
+            $name = basename($_FILES['logo']['name']);
+            $target = __DIR__ . '/../../storage/uploads/' . $name;
+            if (move_uploaded_file($_FILES['logo']['tmp_name'], $target)) {
+                $logoPath = '/storage/uploads/' . $name;
+            }
+        }
+
+        $updatePartner = db()->prepare('UPDATE partners SET type = ?, url = ?, logo_path = ?, city = ?, lat = ?, lng = ?, is_active = ?, sort_order = ? WHERE id = ?');
+        $updatePartner->execute([
+            $_POST['type'] ?? 'official_distributor',
+            $_POST['url'] ?? '',
+            $logoPath,
+            $_POST['city'] ?? '',
+            $_POST['lat'] ?? '',
+            $_POST['lng'] ?? '',
+            isset($_POST['is_active']) ? 1 : 0,
+            (int) ($_POST['sort_order'] ?? 0),
+            $partner['id'],
+        ]);
+
+        $updateTranslation = db()->prepare('UPDATE partner_translations SET name = ?, description = ? WHERE partner_id = ? AND language = ?');
+        foreach (['ru', 'en'] as $language) {
+            $updateTranslation->execute([
+                $_POST['name_' . $language] ?? '',
+                $_POST['description_' . $language] ?? '',
+                $partner['id'],
+                $language,
+            ]);
+        }
+
+        redirect('/admin/partners');
+    }
+
+    render_partial('admin/partner-edit', [
+        'partner' => $partner,
+        'translations' => $translations,
+    ]);
+    exit;
+}
+
+if ($path === '/admin/documents/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $docId = (int) ($_POST['id'] ?? 0);
+    if ($docId > 0) {
+        $stmt = db()->prepare('DELETE FROM documents WHERE id = ?');
+        $stmt->execute([$docId]);
+    }
+    redirect('/admin/documents');
+}
+
+if ($path === '/admin/documents') {
+    $stmt = db()->query('SELECT * FROM documents ORDER BY scope, language, sort_order, id');
+    $documents = $stmt->fetchAll();
+    render_partial('admin/documents', ['documents' => $documents]);
+    exit;
+}
+
+if ($path === '/admin/documents/create') {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $filePath = $_POST['file_path'] ?? '';
+        if (!empty($_FILES['file']['tmp_name'])) {
+            $name = basename($_FILES['file']['name']);
+            $target = __DIR__ . '/../../storage/uploads/' . $name;
+            if (move_uploaded_file($_FILES['file']['tmp_name'], $target)) {
+                $filePath = '/storage/uploads/' . $name;
+            }
+        }
+        $stmt = db()->prepare('INSERT INTO documents (scope, language, title, file_path, doc_type, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([
+            $_POST['scope'] ?? 'brand',
+            $_POST['language'] ?? 'ru',
+            $_POST['title'] ?? '',
+            $filePath,
+            $_POST['doc_type'] ?? '',
+            (int) ($_POST['sort_order'] ?? 0),
+            isset($_POST['is_active']) ? 1 : 0,
+        ]);
+        redirect('/admin/documents');
+    }
+
+    render_partial('admin/document-create', []);
+    exit;
+}
+
+if ($path === '/admin/documents/edit' && isset($_GET['id'])) {
+    $stmt = db()->prepare('SELECT * FROM documents WHERE id = ?');
+    $stmt->execute([$_GET['id']]);
+    $document = $stmt->fetch();
+    if (!$document) {
+        redirect('/admin/documents');
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $filePath = $_POST['file_path'] ?? $document['file_path'];
+        if (!empty($_FILES['file']['tmp_name'])) {
+            $name = basename($_FILES['file']['name']);
+            $target = __DIR__ . '/../../storage/uploads/' . $name;
+            if (move_uploaded_file($_FILES['file']['tmp_name'], $target)) {
+                $filePath = '/storage/uploads/' . $name;
+            }
+        }
+        $update = db()->prepare('UPDATE documents SET scope = ?, language = ?, title = ?, file_path = ?, doc_type = ?, sort_order = ?, is_active = ? WHERE id = ?');
+        $update->execute([
+            $_POST['scope'] ?? $document['scope'],
+            $_POST['language'] ?? $document['language'],
+            $_POST['title'] ?? $document['title'],
+            $filePath,
+            $_POST['doc_type'] ?? $document['doc_type'],
+            (int) ($_POST['sort_order'] ?? $document['sort_order']),
+            isset($_POST['is_active']) ? 1 : 0,
+            $document['id'],
+        ]);
+        redirect('/admin/documents');
+    }
+
+    render_partial('admin/document-edit', ['document' => $document]);
+    exit;
+}
+
+if ($path === '/admin/home-hero') {
+    $settingsStmt = db()->prepare('SELECT language, `key`, `value` FROM site_settings WHERE `key` IN ("hero_title", "hero_subtitle", "hero_cta_primary_label", "hero_cta_primary_url", "hero_cta_secondary_label", "hero_cta_secondary_url", "hero_video_autoplay", "hero_video_path", "hero_video_poster")');
+    $settingsStmt->execute();
+    $settings = [
+        'ru' => [],
+        'en' => [],
+        'hero_video_autoplay' => '0',
+        'hero_video_path' => '',
+        'hero_video_poster' => '',
+    ];
+    foreach ($settingsStmt->fetchAll() as $row) {
+        if ($row['key'] === 'hero_video_autoplay' || $row['key'] === 'hero_video_path' || $row['key'] === 'hero_video_poster') {
+            $settings[$row['key']] = $row['value'];
+        } else {
+            $settings[$row['language']][$row['key']] = $row['value'];
+        }
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $pdo = db();
+        $updateSetting = $pdo->prepare('INSERT INTO site_settings (language, `key`, `value`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)');
+        foreach (['ru', 'en'] as $language) {
+            $updateSetting->execute([$language, 'hero_title', $_POST['hero_title_' . $language] ?? '']);
+            $updateSetting->execute([$language, 'hero_subtitle', $_POST['hero_subtitle_' . $language] ?? '']);
+            $updateSetting->execute([$language, 'hero_cta_primary_label', $_POST['hero_cta_primary_label_' . $language] ?? '']);
+            $updateSetting->execute([$language, 'hero_cta_primary_url', $_POST['hero_cta_primary_url_' . $language] ?? '']);
+            $updateSetting->execute([$language, 'hero_cta_secondary_label', $_POST['hero_cta_secondary_label_' . $language] ?? '']);
+            $updateSetting->execute([$language, 'hero_cta_secondary_url', $_POST['hero_cta_secondary_url_' . $language] ?? '']);
+        }
+
+        $updateSetting->execute(['ru', 'hero_video_autoplay', isset($_POST['hero_autoplay']) ? '1' : '0']);
+        $updateSetting->execute(['en', 'hero_video_autoplay', isset($_POST['hero_autoplay']) ? '1' : '0']);
+
+        if (!empty($_FILES['hero_video']['tmp_name'])) {
+            $name = basename($_FILES['hero_video']['name']);
+            $target = __DIR__ . '/../../storage/uploads/' . $name;
+            if (move_uploaded_file($_FILES['hero_video']['tmp_name'], $target)) {
+                $updateSetting->execute(['ru', 'hero_video_path', '/storage/uploads/' . $name]);
+                $updateSetting->execute(['en', 'hero_video_path', '/storage/uploads/' . $name]);
+            }
+        }
+        if (!empty($_FILES['hero_poster']['tmp_name'])) {
+            $name = basename($_FILES['hero_poster']['name']);
+            $target = __DIR__ . '/../../storage/uploads/' . $name;
+            if (move_uploaded_file($_FILES['hero_poster']['tmp_name'], $target)) {
+                $updateSetting->execute(['ru', 'hero_video_poster', '/storage/uploads/' . $name]);
+                $updateSetting->execute(['en', 'hero_video_poster', '/storage/uploads/' . $name]);
+            }
+        }
+
+        redirect('/admin/home-hero');
+    }
+
+    render_partial('admin/home-hero', [
+        'settings' => $settings,
+    ]);
     exit;
 }
 

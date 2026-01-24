@@ -133,10 +133,6 @@ if (isset($segments[1])) {
         </button>
         <nav class="nav" id="site-nav">
             <div class="nav-top">
-                <div class="nav-language">
-                    <a href="/ru/" <?= $language === 'ru' ? 'class="active"' : '' ?>>RU</a>
-                    <a href="/en/" <?= $language === 'en' ? 'class="active"' : '' ?>>EN</a>
-                </div>
                 <button class="nav-close" type="button" aria-label="<?= htmlspecialchars(t('nav.close', $language), ENT_QUOTES) ?>">
                     <?= htmlspecialchars(t('nav.close', $language), ENT_QUOTES) ?>
                 </button>
@@ -144,12 +140,15 @@ if (isset($segments[1])) {
             <?php foreach ($navItems as $item) : ?>
                 <a href="<?= htmlspecialchars($item['url'], ENT_QUOTES) ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES) ?></a>
             <?php endforeach; ?>
+            <div class="nav-footer">
+                <div class="nav-contacts"><?= nl2br(htmlspecialchars($settings['footer_contacts'] ?? '', ENT_QUOTES)) ?></div>
+                <div class="nav-language">
+                    <a href="/ru/" <?= $language === 'ru' ? 'class="active"' : '' ?>>RU</a>
+                    <a href="/en/" <?= $language === 'en' ? 'class="active"' : '' ?>>EN</a>
+                </div>
+            </div>
         </nav>
         <div class="header-actions">
-            <div class="region-placeholder">
-                <span class="region-label"><?= htmlspecialchars(t('header.region_label', $language), ENT_QUOTES) ?></span>
-                <span class="region-value"><?= htmlspecialchars(t('header.region_value', $language), ENT_QUOTES) ?></span>
-            </div>
             <div class="language-switch">
                 <a href="/ru/" <?= $language === 'ru' ? 'class="active"' : '' ?>>RU</a>
                 <a href="/en/" <?= $language === 'en' ? 'class="active"' : '' ?>>EN</a>
@@ -219,14 +218,36 @@ if (isset($segments[1])) {
             navToggle?.setAttribute('aria-expanded', 'false');
         });
     }
+    const closeNav = () => {
+        document.body.classList.remove('nav-open');
+        navToggle?.setAttribute('aria-expanded', 'false');
+    };
     if (nav) {
         nav.addEventListener('click', (event) => {
             if (event.target instanceof HTMLElement && event.target.tagName === 'A') {
-                document.body.classList.remove('nav-open');
-                navToggle?.setAttribute('aria-expanded', 'false');
+                closeNav();
             }
         });
     }
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeNav();
+        }
+    });
+    let touchStartX = 0;
+    nav?.addEventListener('touchstart', (event) => {
+        if (event.touches.length) {
+            touchStartX = event.touches[0].clientX;
+        }
+    });
+    nav?.addEventListener('touchend', (event) => {
+        if (event.changedTouches.length) {
+            const deltaX = touchStartX - event.changedTouches[0].clientX;
+            if (deltaX > 80) {
+                closeNav();
+            }
+        }
+    });
     const onScroll = () => {
         if (window.scrollY > 12) {
             header?.classList.add('is-compact');
