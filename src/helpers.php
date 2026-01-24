@@ -156,49 +156,58 @@ function admin_log_attempt(string $email, bool $success): void
 
 function partners_list(string $language): array
 {
-    if ($language === 'en') {
-        return [
-            [
-                'name' => 'Argument Energo (Moscow)',
-                'url' => 'https://argument-energo.ru',
-                'note' => 'Official distributor',
-                'description' => 'Structured System Power catalog by series and configurations for fast selection. Project-oriented supply with attention to documentation and delivery terms.',
-            ],
-            [
-                'name' => 'Systemnye Resheniya / SISSOL (Smolensk)',
-                'url' => 'https://sissol.ru',
-                'note' => 'Official distributor',
-                'description' => '10+ years in power supply and lighting. Direct distributor contracts ensure documented origin, quality and warranty support, plus engineering guidance for project-specific selection.',
-            ],
-            [
-                'name' => 'Vseinstrumenti',
-                'url' => 'https://www.vseinstrumenti.ru',
-                'note' => 'Marketplace channel',
-                'description' => 'Marketplace access for quick purchasing and logistics. Terms depend on the specific marketplace sales format.',
-            ],
+    $stmt = db()->prepare(
+        'SELECT pb.body
+         FROM page_blocks pb
+         JOIN pages p ON p.id = pb.page_id
+         WHERE p.slug = ?
+           AND pb.language = ?
+           AND pb.block_key = ?
+         ORDER BY pb.sort_order ASC
+         LIMIT 1'
+    );
+    $stmt->execute(['where-to-buy', $language, 'partners']);
+    $block = $stmt->fetch();
+
+    if (!$block || empty($block['body'])) {
+        return [];
+    }
+
+    $lines = preg_split('/\r?\n/', $block['body']);
+    $currentGroup = '';
+    $partners = [];
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '') {
+            continue;
+        }
+
+        if (preg_match('/^\\[(.+)\\]$/u', $line, $matches)) {
+            $currentGroup = trim($matches[1]);
+            continue;
+        }
+
+        $parts = array_map('trim', explode('|', $line));
+        $name = $parts[0] ?? '';
+        $url = $parts[1] ?? '';
+        $note = $parts[2] ?? '';
+        $description = $parts[3] ?? '';
+
+        if ($name === '' || $url === '') {
+            continue;
+        }
+
+        $partners[] = [
+            'name' => $name,
+            'url' => $url,
+            'note' => $note,
+            'description' => $description,
+            'group' => $currentGroup,
         ];
     }
 
-    return [
-        [
-            'name' => 'Аргумент Энерго (Москва)',
-            'url' => 'https://argument-energo.ru',
-            'note' => 'Официальный дистрибьютор',
-            'description' => 'Партнёр специализируется на поставках электротехнической продукции для объектов и монтажных организаций. Каталог System Power структурирован по сериям и исполнениям, что упрощает выбор конфигурации. Компания ориентирована на корректную работу с документацией и сопровождение поставки. Подходит для проектов, где важны сроки, ассортимент и понятные условия.',
-        ],
-        [
-            'name' => 'ООО «Системные Решения» / SISSOL (Смоленск)',
-            'url' => 'https://sissol.ru',
-            'note' => 'Официальный дистрибьютор',
-            'description' => 'Компания работает в сфере электроснабжения и электроосвещения более 10 лет. Продукция поставляется по прямым дистрибьюторским контрактам, что позволяет подтверждать происхождение, качество и гарантийные обязательства. Партнёр помогает с подбором оптимального решения и сопровождает проектные задачи. География проектов включает регионы России и страны ЕАЭС.',
-        ],
-        [
-            'name' => 'ВсеИнструменты',
-            'url' => 'https://www.vseinstrumenti.ru',
-            'note' => 'Маркетплейс / онлайн-гипермаркет',
-            'description' => 'Канал для оперативных закупок и широкого доступа к ассортименту. Маркетплейс удобен для сравнения характеристик и быстрой логистики, особенно для типовых потребностей. Подходит как массовый канал доступности System Power для монтажников и конечных заказчиков. Условия поставки и документооборот зависят от формата конкретной продажи на платформе.',
-        ],
-    ];
+    return $partners;
 }
 
 function cache_get(string $key): ?string
