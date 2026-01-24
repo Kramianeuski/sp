@@ -3,6 +3,13 @@ $isHome = ($page['slug'] ?? '') === 'home';
 $isWhereToBuy = ($page['slug'] ?? '') === 'where-to-buy';
 $isContacts = ($page['slug'] ?? '') === 'contacts';
 $isDocumentation = ($page['slug'] ?? '') === 'documentation';
+$hasDocumentationBlock = false;
+foreach ($blocks as $block) {
+    if (($block['block_key'] ?? '') === 'documentation') {
+        $hasDocumentationBlock = true;
+        break;
+    }
+}
 ?>
 <?php if (!$isHome) : ?>
     <?php if ($isWhereToBuy || $isContacts) : ?>
@@ -40,7 +47,7 @@ $isDocumentation = ($page['slug'] ?? '') === 'documentation';
     if ($isHome && $block['block_key'] === 'official-seller') {
         continue;
     }
-    if ($isDocumentation && $block['block_key'] === 'partners') {
+    if (($isDocumentation || $hasDocumentationBlock) && $block['block_key'] === 'partners') {
         continue;
     }
     $blockTemplate = __DIR__ . '/blocks/' . $block['block_key'] . '.php';
