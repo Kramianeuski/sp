@@ -137,6 +137,9 @@ if (isset($segments[1])) {
                     <a href="/ru/" <?= $language === 'ru' ? 'class="active"' : '' ?>>RU</a>
                     <a href="/en/" <?= $language === 'en' ? 'class="active"' : '' ?>>EN</a>
                 </div>
+                <button class="nav-close" type="button" aria-label="<?= htmlspecialchars(t('nav.close', $language), ENT_QUOTES) ?>">
+                    <?= htmlspecialchars(t('nav.close', $language), ENT_QUOTES) ?>
+                </button>
             </div>
             <?php foreach ($navItems as $item) : ?>
                 <a href="<?= htmlspecialchars($item['url'], ENT_QUOTES) ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES) ?></a>
@@ -203,10 +206,17 @@ if (isset($segments[1])) {
     const header = document.querySelector('.site-header');
     const navToggle = document.querySelector('.nav-toggle');
     const nav = document.querySelector('.nav');
+    const navClose = document.querySelector('.nav-close');
     if (navToggle) {
         navToggle.addEventListener('click', () => {
             const isOpen = document.body.classList.toggle('nav-open');
             navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+    }
+    if (navClose) {
+        navClose.addEventListener('click', () => {
+            document.body.classList.remove('nav-open');
+            navToggle?.setAttribute('aria-expanded', 'false');
         });
     }
     if (nav) {
