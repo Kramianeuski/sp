@@ -79,9 +79,9 @@ function render_partial(string $template, array $data = []): void
     include $templatePath;
 }
 
-function redirect(string $path): void
+function redirect(string $path, int $code = 302): void
 {
-    header('Location: ' . $path);
+    header('Location: ' . $path, true, $code);
     exit;
 }
 
