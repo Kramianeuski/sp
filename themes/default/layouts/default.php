@@ -8,12 +8,20 @@ $settings = [];
 foreach ($siteSettings->fetchAll() as $row) {
     $settings[$row['key']] = $row['value'];
 }
-$metaTitle = $page['meta_title'] ?? $page['title'] ?? $settings['site_title'] ?? '';
-$metaDescription = $page['meta_description'] ?? $settings['site_description'] ?? '';
-$canonical = $page['canonical'] ?? '';
-$robots = $page['robots'] ?? 'index,follow';
-$ogTitle = $page['og_title'] ?? $metaTitle;
-$ogDescription = $page['og_description'] ?? $metaDescription;
+$footerLinksStmt = db()->prepare('SELECT label, url FROM footer_links WHERE language = ? ORDER BY sort_order');
+$footerLinksStmt->execute([$language]);
+$footerLinks = $footerLinksStmt->fetchAll();
+$pageData = $page ?? [];
+$metaTitle = $pageData['meta_title'] ?? $pageData['title'] ?? $settings['site_title'] ?? '';
+$metaDescription = $pageData['meta_description'] ?? $settings['site_description'] ?? '';
+$canonical = $pageData['canonical'] ?? '';
+$robots = $pageData['robots'] ?? 'index,follow';
+$ogTitle = $pageData['og_title'] ?? $metaTitle;
+$ogDescription = $pageData['og_description'] ?? $metaDescription;
+$useLayout = isset($pageData['use_layout']) ? (int) $pageData['use_layout'] : 1;
+$replaceStyles = isset($pageData['replace_styles']) ? (int) $pageData['replace_styles'] : 0;
+$customCss = $pageData['custom_css'] ?? '';
+$isHome = ($pageData['slug'] ?? '') === 'home';
 $baseUrl = config('base_url');
 $breadcrumbs = [
     [
@@ -94,28 +102,50 @@ if (isset($segments[1])) {
     <meta property="og:description" content="<?= htmlspecialchars($ogDescription, ENT_QUOTES) ?>">
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?= htmlspecialchars($baseUrl . $_SERVER['REQUEST_URI'], ENT_QUOTES) ?>">
-    <link rel="stylesheet" href="/themes/default/styles.css">
+    <?php if (!$replaceStyles) : ?>
+        <link rel="stylesheet" href="/themes/default/styles.css">
+    <?php else : ?>
+        <style>
+            body { margin: 0; font-family: "Inter", "Segoe UI", sans-serif; }
+        </style>
+    <?php endif; ?>
+    <?php if (!empty($customCss)) : ?>
+        <style><?= $customCss ?></style>
+    <?php endif; ?>
 </head>
-<body>
-<header class="site-header">
+<body class="<?= $isHome ? 'is-home' : '' ?><?= $useLayout ? '' : ' no-layout' ?>">
+<?php if ($useLayout) : ?>
+<header class="site-header<?= $isHome ? ' is-hero' : '' ?>">
     <div class="container">
         <div class="header-left">
-            <a class="logo" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/"><?= htmlspecialchars($settings['brand_name'] ?? '', ENT_QUOTES) ?></a>
+            <?php if (!empty($settings['header_show_logo']) && !empty($settings['header_logo_path'])) : ?>
+                <a class="logo logo-image" href="<?= htmlspecialchars($settings['header_logo_link'] ?? '/', ENT_QUOTES) ?>">
+                    <img src="<?= htmlspecialchars($settings['header_logo_path'], ENT_QUOTES) ?>" alt="<?= htmlspecialchars($settings['header_logo_alt'] ?? '', ENT_QUOTES) ?>">
+                </a>
+            <?php else : ?>
+                <a class="logo" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/"><?= htmlspecialchars($settings['brand_name'] ?? '', ENT_QUOTES) ?></a>
+            <?php endif; ?>
         </div>
-        <button class="nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="site-nav">
+        <button class="nav-toggle" type="button" aria-label="<?= htmlspecialchars(t('nav.toggle', $language), ENT_QUOTES) ?>" aria-expanded="false" aria-controls="site-nav">
             <span></span>
             <span></span>
             <span></span>
         </button>
         <nav class="nav" id="site-nav">
+            <div class="nav-top">
+                <div class="nav-language">
+                    <a href="/ru/" <?= $language === 'ru' ? 'class="active"' : '' ?>>RU</a>
+                    <a href="/en/" <?= $language === 'en' ? 'class="active"' : '' ?>>EN</a>
+                </div>
+            </div>
             <?php foreach ($navItems as $item) : ?>
                 <a href="<?= htmlspecialchars($item['url'], ENT_QUOTES) ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES) ?></a>
             <?php endforeach; ?>
         </nav>
         <div class="header-actions">
             <div class="region-placeholder">
-                <span class="region-label"><?= $language === 'en' ? 'Region' : 'Регион' ?></span>
-                <span class="region-value"><?= $language === 'en' ? 'All regions' : 'Все регионы' ?></span>
+                <span class="region-label"><?= htmlspecialchars(t('header.region_label', $language), ENT_QUOTES) ?></span>
+                <span class="region-value"><?= htmlspecialchars(t('header.region_value', $language), ENT_QUOTES) ?></span>
             </div>
             <div class="language-switch">
                 <a href="/ru/" <?= $language === 'ru' ? 'class="active"' : '' ?>>RU</a>
@@ -124,9 +154,11 @@ if (isset($segments[1])) {
         </div>
     </div>
 </header>
-<main class="site-main">
+<?php endif; ?>
+<main class="site-main<?= $useLayout ? '' : ' is-custom' ?>">
     <?php include $templatePath; ?>
 </main>
+<?php if ($useLayout) : ?>
 <footer class="site-footer">
     <div class="container">
         <div class="footer-grid">
@@ -135,9 +167,9 @@ if (isset($segments[1])) {
                 <div class="footer-text"><?= nl2br(htmlspecialchars($settings['footer_text'] ?? '', ENT_QUOTES)) ?></div>
             </div>
             <div>
-                <div class="footer-title"><?= $language === 'en' ? 'Navigation' : 'Навигация' ?></div>
+                <div class="footer-title"><?= htmlspecialchars(t('footer.links', $language), ENT_QUOTES) ?></div>
                 <div class="footer-text">
-                    <?php foreach ($navItems as $item) : ?>
+                    <?php foreach ($footerLinks as $item) : ?>
                         <div><a href="<?= htmlspecialchars($item['url'], ENT_QUOTES) ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES) ?></a></div>
                     <?php endforeach; ?>
                 </div>
@@ -147,9 +179,10 @@ if (isset($segments[1])) {
                 <div class="footer-text"><?= nl2br(htmlspecialchars($settings['footer_contacts'] ?? '', ENT_QUOTES)) ?></div>
             </div>
         </div>
-        <div class="footer-meta">© <?= date('Y') ?> System Power</div>
+        <div class="footer-meta"><?= htmlspecialchars($settings['footer_copyright'] ?? '© System Power', ENT_QUOTES) ?></div>
     </div>
 </footer>
+<?php endif; ?>
 <script type="application/ld+json">
 <?= json_encode([
     '@context' => 'https://schema.org',
@@ -169,17 +202,28 @@ if (isset($segments[1])) {
 <script>
     const header = document.querySelector('.site-header');
     const navToggle = document.querySelector('.nav-toggle');
+    const nav = document.querySelector('.nav');
     if (navToggle) {
         navToggle.addEventListener('click', () => {
             const isOpen = document.body.classList.toggle('nav-open');
             navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         });
     }
+    if (nav) {
+        nav.addEventListener('click', (event) => {
+            if (event.target instanceof HTMLElement && event.target.tagName === 'A') {
+                document.body.classList.remove('nav-open');
+                navToggle?.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
     const onScroll = () => {
         if (window.scrollY > 12) {
             header?.classList.add('is-compact');
+            header?.classList.add('is-scrolled');
         } else {
             header?.classList.remove('is-compact');
+            header?.classList.remove('is-scrolled');
         }
     };
     window.addEventListener('scroll', onScroll);

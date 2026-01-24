@@ -8,7 +8,7 @@
         <h1><?= htmlspecialchars($page['h1'], ENT_QUOTES) ?></h1>
         <p><?= htmlspecialchars($page['meta_description'] ?? $page['title'], ENT_QUOTES) ?></p>
         <div class="hero-actions">
-            <a class="button" href="#categories"><?= $language === 'en' ? 'Browse categories' : 'Смотреть категории' ?></a>
+            <a class="button" href="#categories"><?= htmlspecialchars(t('cta.browse_categories', $language), ENT_QUOTES) ?></a>
         </div>
     </div>
 </section>

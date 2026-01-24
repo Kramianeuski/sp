@@ -10,8 +10,9 @@
         <thead>
         <tr>
             <th><?= htmlspecialchars(t('admin.category_slug', 'ru'), ENT_QUOTES) ?></th>
-            <th><?= htmlspecialchars(t('admin.language', 'ru'), ENT_QUOTES) ?></th>
-            <th><?= htmlspecialchars(t('admin.category_name', 'ru'), ENT_QUOTES) ?></th>
+            <th><?= htmlspecialchars(t('admin.status', 'ru'), ENT_QUOTES) ?></th>
+            <th><?= htmlspecialchars(t('admin.language_ru', 'ru'), ENT_QUOTES) ?></th>
+            <th><?= htmlspecialchars(t('admin.language_en', 'ru'), ENT_QUOTES) ?></th>
             <th class="table-actions"></th>
         </tr>
         </thead>
@@ -19,10 +20,11 @@
         <?php foreach ($categories as $category) : ?>
             <tr>
                 <td><?= htmlspecialchars($category['slug'], ENT_QUOTES) ?></td>
-                <td><?= htmlspecialchars($category['language'], ENT_QUOTES) ?></td>
-                <td><?= htmlspecialchars($category['name'], ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars($category['status'], ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars($category['name_ru'] ?? '', ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars($category['name_en'] ?? '', ENT_QUOTES) ?></td>
                 <td class="table-actions">
-                    <a href="/admin/categories/edit?id=<?= htmlspecialchars($category['id'], ENT_QUOTES) ?>&lang=<?= htmlspecialchars($category['language'], ENT_QUOTES) ?>">
+                    <a href="/admin/categories/edit?id=<?= htmlspecialchars($category['id'], ENT_QUOTES) ?>">
                         <?= htmlspecialchars(t('admin.edit', 'ru'), ENT_QUOTES) ?>
                     </a>
                 </td>

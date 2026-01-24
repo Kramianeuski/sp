@@ -1,5 +1,5 @@
 <?php
-$catStmt = db()->prepare('SELECT c.slug, ct.name, ct.description FROM categories c JOIN category_translations ct ON ct.category_id = c.id WHERE ct.language = ?');
+$catStmt = db()->prepare('SELECT c.slug, ct.name, ct.description FROM categories c JOIN category_translations ct ON ct.category_id = c.id WHERE ct.language = ? AND c.status = "published"');
 $catStmt->execute([$language]);
 $categories = $catStmt->fetchAll();
 ?>
@@ -14,6 +14,7 @@ $categories = $catStmt->fetchAll();
                 <a class="category-card" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/products/<?= htmlspecialchars($category['slug'], ENT_QUOTES) ?>/">
                     <div class="category-card-title"><?= htmlspecialchars($category['name'], ENT_QUOTES) ?></div>
                     <div class="category-card-text"><?= htmlspecialchars($category['description'], ENT_QUOTES) ?></div>
+                    <div class="cta-link"><?= htmlspecialchars(t('cta.open_category', $language), ENT_QUOTES) ?> →</div>
                 </a>
             <?php endforeach; ?>
         </div>

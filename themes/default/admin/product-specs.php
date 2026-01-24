@@ -2,7 +2,7 @@
 <div class="page-header">
     <h1><?= htmlspecialchars(t('admin.specs_title', 'ru'), ENT_QUOTES) ?></h1>
     <div class="page-header-actions">
-        <a class="btn btn-secondary" href="/admin/products/edit?id=<?= htmlspecialchars($product_id, ENT_QUOTES) ?>&lang=<?= htmlspecialchars($lang, ENT_QUOTES) ?>">
+        <a class="btn btn-secondary" href="/admin/products/edit?id=<?= htmlspecialchars($product_id, ENT_QUOTES) ?>">
             <?= htmlspecialchars(t('admin.back', 'ru'), ENT_QUOTES) ?>
         </a>
     </div>

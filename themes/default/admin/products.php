@@ -11,8 +11,9 @@
         <tr>
             <th><?= htmlspecialchars(t('admin.product_slug', 'ru'), ENT_QUOTES) ?></th>
             <th><?= htmlspecialchars(t('admin.product_sku', 'ru'), ENT_QUOTES) ?></th>
-            <th><?= htmlspecialchars(t('admin.language', 'ru'), ENT_QUOTES) ?></th>
-            <th><?= htmlspecialchars(t('admin.product_name', 'ru'), ENT_QUOTES) ?></th>
+            <th><?= htmlspecialchars(t('admin.status', 'ru'), ENT_QUOTES) ?></th>
+            <th><?= htmlspecialchars(t('admin.language_ru', 'ru'), ENT_QUOTES) ?></th>
+            <th><?= htmlspecialchars(t('admin.language_en', 'ru'), ENT_QUOTES) ?></th>
             <th class="table-actions"></th>
         </tr>
         </thead>
@@ -21,15 +22,20 @@
             <tr>
                 <td><?= htmlspecialchars($product['slug'], ENT_QUOTES) ?></td>
                 <td><?= htmlspecialchars($product['sku'], ENT_QUOTES) ?></td>
-                <td><?= htmlspecialchars($product['language'], ENT_QUOTES) ?></td>
-                <td><?= htmlspecialchars($product['name'], ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars($product['status'], ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars($product['name_ru'] ?? '', ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars($product['name_en'] ?? '', ENT_QUOTES) ?></td>
                 <td class="table-actions">
-                    <a href="/admin/products/edit?id=<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>&lang=<?= htmlspecialchars($product['language'], ENT_QUOTES) ?>">
+                    <a href="/admin/products/edit?id=<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>">
                         <?= htmlspecialchars(t('admin.edit', 'ru'), ENT_QUOTES) ?>
                     </a>
                     ·
-                    <a href="/admin/products/specs?id=<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>&lang=<?= htmlspecialchars($product['language'], ENT_QUOTES) ?>">
-                        <?= htmlspecialchars(t('admin.specs', 'ru'), ENT_QUOTES) ?>
+                    <a href="/admin/products/specs?id=<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>&lang=ru">
+                        <?= htmlspecialchars(t('admin.specs_ru', 'ru'), ENT_QUOTES) ?>
+                    </a>
+                    ·
+                    <a href="/admin/products/specs?id=<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>&lang=en">
+                        <?= htmlspecialchars(t('admin.specs_en', 'ru'), ENT_QUOTES) ?>
                     </a>
                 </td>
             </tr>

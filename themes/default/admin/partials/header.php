@@ -15,6 +15,8 @@
             <a href="/admin/pages"><?= htmlspecialchars(t('admin.nav_pages', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/categories"><?= htmlspecialchars(t('admin.nav_categories', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/products"><?= htmlspecialchars(t('admin.nav_products', 'ru'), ENT_QUOTES) ?></a>
+            <a href="/admin/header"><?= htmlspecialchars(t('admin.nav_header', 'ru'), ENT_QUOTES) ?></a>
+            <a href="/admin/footer"><?= htmlspecialchars(t('admin.nav_footer', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/translations"><?= htmlspecialchars(t('admin.nav_translations', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/files"><?= htmlspecialchars(t('admin.nav_files', 'ru'), ENT_QUOTES) ?></a>
         </nav>
