@@ -8,18 +8,6 @@ require __DIR__ . '/../src/bootstrap.php';
 
 /*
 |--------------------------------------------------------------------------
-| Helpers
-|--------------------------------------------------------------------------
-*/
-
-function redirect(string $to, int $code = 302): void
-{
-    header('Location: ' . $to, true, $code);
-    exit;
-}
-
-/*
-|--------------------------------------------------------------------------
 | Parse URI
 |--------------------------------------------------------------------------
 */
@@ -27,6 +15,7 @@ function redirect(string $to, int $code = 302): void
 $path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/');
 $path = $path === '' ? '/' : $path;
 $queryString = $_SERVER['QUERY_STRING'] ?? '';
+$lowerPath = strtolower($path);
 
 /*
 |--------------------------------------------------------------------------
@@ -118,6 +107,28 @@ if ($path === '/robots.txt') {
 
 /*
 |--------------------------------------------------------------------------
+| Reject invalid/system paths
+|--------------------------------------------------------------------------
+*/
+
+$blockedPrefixes = ['sdk', 'api', 'wp', 'wordpress'];
+
+foreach ($blockedPrefixes as $prefix) {
+    if ($lowerPath === '/' . $prefix || str_starts_with($lowerPath, '/' . $prefix . '/')) {
+        http_response_code(404);
+        echo 'Not Found';
+        exit;
+    }
+}
+
+if (preg_match('/\.php(?:\/|$)/i', $path) === 1) {
+    http_response_code(404);
+    echo 'Not Found';
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
 | Split segments
 |--------------------------------------------------------------------------
 */
@@ -132,8 +143,12 @@ $segments = explode('/', trim($path, '/'));
 
 $language = $segments[0] ?? 'ru';
 
-if (!in_array($language, ['ru', 'en'], true)) {
-    redirect('/ru' . ($path === '/' ? '/' : $path . '/'));
+$allowedLanguages = ['ru', 'en'];
+
+if (!in_array($language, $allowedLanguages, true)) {
+    http_response_code(404);
+    echo 'Not Found';
+    exit;
 }
 
 /*
