@@ -6,7 +6,7 @@
             <span><?= htmlspecialchars($page['h1'], ENT_QUOTES) ?></span>
         </nav>
         <h1><?= htmlspecialchars($page['h1'], ENT_QUOTES) ?></h1>
-        <p><?= htmlspecialchars($page['meta_description'] ?? $page['title'], ENT_QUOTES) ?></p>
+        <p><?= nl2br(htmlspecialchars($page['meta_description'] ?? $page['title'], ENT_QUOTES)) ?></p>
         <div class="hero-actions">
             <a class="button" href="#categories"><?= htmlspecialchars(t('cta.browse_categories', $language), ENT_QUOTES) ?></a>
         </div>
