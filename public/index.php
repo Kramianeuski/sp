@@ -12,10 +12,12 @@ require __DIR__ . '/../src/bootstrap.php';
 |--------------------------------------------------------------------------
 */
 
-$path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/');
+$rawPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/';
+$path = rtrim($rawPath, '/');
 $path = $path === '' ? '/' : $path;
 $queryString = $_SERVER['QUERY_STRING'] ?? '';
 $lowerPath = strtolower($path);
+$hasTrailingSlash = $rawPath !== '/' && str_ends_with($rawPath, '/');
 
 /*
 |--------------------------------------------------------------------------
@@ -157,7 +159,7 @@ if (!in_array($language, $allowedLanguages, true)) {
 |--------------------------------------------------------------------------
 */
 
-if ($path === '/' . $language) {
+if ($path === '/' . $language && !$hasTrailingSlash) {
     redirect('/' . $language . '/');
 }
 
