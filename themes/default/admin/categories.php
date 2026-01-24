@@ -27,6 +27,12 @@
                     <a href="/admin/categories/edit?id=<?= htmlspecialchars($category['id'], ENT_QUOTES) ?>">
                         <?= htmlspecialchars(t('admin.edit', 'ru'), ENT_QUOTES) ?>
                     </a>
+                    ·
+                    <form class="inline-form" method="post" action="/admin/categories/delete" onsubmit="return confirm('Удалить категорию?');">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="id" value="<?= htmlspecialchars($category['id'], ENT_QUOTES) ?>">
+                        <button class="btn-link" type="submit"><?= htmlspecialchars(t('admin.delete', 'ru'), ENT_QUOTES) ?></button>
+                    </form>
                 </td>
             </tr>
         <?php endforeach; ?>

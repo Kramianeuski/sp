@@ -99,6 +99,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token($_POST['csrf_tok
     exit;
 }
 
+if ($path === '/admin/pages/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $pageId = (int) ($_POST['id'] ?? 0);
+    if ($pageId > 0) {
+        $stmt = db()->prepare('DELETE FROM pages WHERE id = ?');
+        $stmt->execute([$pageId]);
+    }
+    redirect('/admin/pages');
+}
+
+if ($path === '/admin/categories/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $categoryId = (int) ($_POST['id'] ?? 0);
+    if ($categoryId > 0) {
+        $stmt = db()->prepare('DELETE FROM categories WHERE id = ?');
+        $stmt->execute([$categoryId]);
+    }
+    redirect('/admin/categories');
+}
+
+if ($path === '/admin/products/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $productId = (int) ($_POST['id'] ?? 0);
+    if ($productId > 0) {
+        $stmt = db()->prepare('DELETE FROM products WHERE id = ?');
+        $stmt->execute([$productId]);
+    }
+    redirect('/admin/products');
+}
+
 if ($path === '/admin/pages') {
     $stmt = db()->query("SELECT p.id, p.slug, p.status,
         MAX(CASE WHEN pt.language = 'ru' THEN pt.h1 END) AS h1_ru,
@@ -716,6 +743,12 @@ if ($path === '/admin/header') {
         $settings[$row['language']][$row['key']] = $row['value'];
     }
 
+    $navStmt = db()->prepare('SELECT * FROM navigation_items WHERE language = ? ORDER BY sort_order');
+    $navStmt->execute(['ru']);
+    $navRu = $navStmt->fetchAll();
+    $navStmt->execute(['en']);
+    $navEn = $navStmt->fetchAll();
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo = db();
         $updateSetting = $pdo->prepare('INSERT INTO site_settings (language, `key`, `value`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)');
@@ -723,6 +756,24 @@ if ($path === '/admin/header') {
             $updateSetting->execute([$language, 'header_show_logo', isset($_POST['header_show_logo_' . $language]) ? '1' : '0']);
             $updateSetting->execute([$language, 'header_logo_link', $_POST['header_logo_link_' . $language] ?? '']);
             $updateSetting->execute([$language, 'header_logo_alt', $_POST['header_logo_alt_' . $language] ?? '']);
+        }
+
+        foreach (['ru', 'en'] as $language) {
+            $delete = $pdo->prepare('DELETE FROM navigation_items WHERE language = ?');
+            $delete->execute([$language]);
+            $labels = $_POST['header_links_label_' . $language] ?? [];
+            $urls = $_POST['header_links_url_' . $language] ?? [];
+            $orders = $_POST['header_links_sort_' . $language] ?? [];
+            $insert = $pdo->prepare('INSERT INTO navigation_items (language, label, url, sort_order) VALUES (?, ?, ?, ?)');
+            foreach ($labels as $index => $label) {
+                $label = trim($label);
+                $url = trim($urls[$index] ?? '');
+                if ($label === '' || $url === '') {
+                    continue;
+                }
+                $sortOrder = (int) ($orders[$index] ?? 0);
+                $insert->execute([$language, $label, $url, $sortOrder]);
+            }
         }
 
         if (!empty($_FILES['header_logo']['tmp_name'])) {
@@ -738,7 +789,11 @@ if ($path === '/admin/header') {
         redirect('/admin/header');
     }
 
-    render_partial('admin/header', ['settings' => $settings]);
+    render_partial('admin/header', [
+        'settings' => $settings,
+        'nav_ru' => $navRu,
+        'nav_en' => $navEn,
+    ]);
     exit;
 }
 

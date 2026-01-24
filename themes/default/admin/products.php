@@ -37,6 +37,12 @@
                     <a href="/admin/products/specs?id=<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>&lang=en">
                         <?= htmlspecialchars(t('admin.specs_en', 'ru'), ENT_QUOTES) ?>
                     </a>
+                    ·
+                    <form class="inline-form" method="post" action="/admin/products/delete" onsubmit="return confirm('Удалить товар?');">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="id" value="<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>">
+                        <button class="btn-link" type="submit"><?= htmlspecialchars(t('admin.delete', 'ru'), ENT_QUOTES) ?></button>
+                    </form>
                 </td>
             </tr>
         <?php endforeach; ?>
