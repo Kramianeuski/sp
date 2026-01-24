@@ -1,6 +1,8 @@
-<section class="content-block brand">
+<section class="content-block intro-block">
     <div class="container">
-        <h2><?= htmlspecialchars($blockData['title'], ENT_QUOTES) ?></h2>
-        <div class="text-block"><?= nl2br(htmlspecialchars($blockData['body'], ENT_QUOTES)) ?></div>
+        <div class="section-header">
+            <h2><?= htmlspecialchars($blockData['title'], ENT_QUOTES) ?></h2>
+        </div>
+        <div class="intro-text"><?= nl2br(htmlspecialchars($blockData['body'], ENT_QUOTES)) ?></div>
     </div>
 </section>

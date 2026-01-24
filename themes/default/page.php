@@ -1,5 +1,7 @@
 <?php
+$isHome = ($page['slug'] ?? '') === 'home';
 ?>
+<?php if (!$isHome) : ?>
 <section class="page-header">
     <div class="container">
         <nav class="breadcrumbs">
@@ -9,13 +11,19 @@
         </nav>
         <h1><?= htmlspecialchars($page['h1'] ?? '', ENT_QUOTES) ?></h1>
         <p><?= htmlspecialchars($page['meta_description'] ?? $page['title'] ?? '', ENT_QUOTES) ?></p>
-        <div class="hero-actions">
-            <a class="button" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/products/"><?= $language === 'en' ? 'View products' : 'Смотреть продукцию' ?></a>
-        </div>
     </div>
 </section>
+<?php endif; ?>
+<?php if (!empty($page['custom_html'])) : ?>
+    <section class="page-custom">
+        <?= $page['custom_html'] ?>
+    </section>
+<?php endif; ?>
 <?php foreach ($blocks as $block) : ?>
     <?php
+    if ($isHome && $block['block_key'] === 'official-seller') {
+        continue;
+    }
     $blockTemplate = __DIR__ . '/blocks/' . $block['block_key'] . '.php';
     if (file_exists($blockTemplate)) {
         $blockData = $block;

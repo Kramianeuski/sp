@@ -17,17 +17,17 @@ if ($path === '/sitemap.xml') {
     $languages = ['ru', 'en'];
     $urls = [];
     foreach ($languages as $language) {
-        $pages = db()->prepare('SELECT p.slug FROM pages p JOIN page_translations pt ON pt.page_id = p.id WHERE pt.language = ? AND pt.indexable = 1');
+        $pages = db()->prepare('SELECT p.slug FROM pages p JOIN page_translations pt ON pt.page_id = p.id WHERE pt.language = ? AND pt.indexable = 1 AND p.status = "published"');
         $pages->execute([$language]);
         foreach ($pages->fetchAll() as $page) {
             $urls[] = '/' . $language . '/' . ($page['slug'] === 'home' ? '' : $page['slug'] . '/');
         }
-        $categories = db()->prepare('SELECT c.slug FROM categories c JOIN category_translations ct ON ct.category_id = c.id WHERE ct.language = ? AND ct.indexable = 1');
+        $categories = db()->prepare('SELECT c.slug FROM categories c JOIN category_translations ct ON ct.category_id = c.id WHERE ct.language = ? AND ct.indexable = 1 AND c.status = "published"');
         $categories->execute([$language]);
         foreach ($categories->fetchAll() as $category) {
             $urls[] = '/' . $language . '/products/' . $category['slug'] . '/';
         }
-        $products = db()->prepare('SELECT p.slug FROM products p JOIN product_translations pt ON pt.product_id = p.id WHERE pt.language = ? AND pt.indexable = 1');
+        $products = db()->prepare('SELECT p.slug FROM products p JOIN product_translations pt ON pt.product_id = p.id WHERE pt.language = ? AND pt.indexable = 1 AND p.status = "published"');
         $products->execute([$language]);
         foreach ($products->fetchAll() as $product) {
             $urls[] = '/' . $language . '/product/' . $product['slug'] . '/';
@@ -70,7 +70,7 @@ if (count($segments) === 1 && ($segments[0] === 'ru' || $segments[0] === 'en')) 
 }
 
 if ($segments[1] ?? '' === 'products' && !isset($segments[2])) {
-    $stmt = db()->prepare('SELECT c.id, c.slug, ct.name, ct.description, ct.h1, ct.meta_title, ct.meta_description FROM categories c JOIN category_translations ct ON ct.category_id = c.id WHERE ct.language = ?');
+    $stmt = db()->prepare('SELECT c.id, c.slug, ct.name, ct.description, ct.h1, ct.meta_title, ct.meta_description FROM categories c JOIN category_translations ct ON ct.category_id = c.id WHERE ct.language = ? AND c.status = "published"');
     $stmt->execute([$language]);
     $categories = $stmt->fetchAll();
 
@@ -97,7 +97,7 @@ if ($segments[1] ?? '' === 'products' && !isset($segments[2])) {
 
 if ($segments[1] ?? '' === 'products' && isset($segments[2])) {
     $slug = $segments[2];
-    $stmt = db()->prepare('SELECT c.id, c.slug, ct.name, ct.description, ct.h1, ct.meta_title, ct.meta_description, ct.seo_text, ct.official_seller, ct.faq FROM categories c JOIN category_translations ct ON ct.category_id = c.id WHERE c.slug = ? AND ct.language = ?');
+    $stmt = db()->prepare('SELECT c.id, c.slug, ct.name, ct.description, ct.h1, ct.meta_title, ct.meta_description, ct.seo_text, ct.official_seller, ct.faq FROM categories c JOIN category_translations ct ON ct.category_id = c.id WHERE c.slug = ? AND ct.language = ? AND c.status = "published"');
     $stmt->execute([$slug, $language]);
     $category = $stmt->fetch();
     if (!$category) {
@@ -108,7 +108,7 @@ if ($segments[1] ?? '' === 'products' && isset($segments[2])) {
 
     $search = trim($_GET['q'] ?? '');
     $sort = $_GET['sort'] ?? 'name';
-    $query = 'SELECT p.id, p.slug, p.sku, pt.name, pt.short_description FROM products p JOIN product_translations pt ON pt.product_id = p.id WHERE p.category_id = ? AND pt.language = ?';
+    $query = 'SELECT p.id, p.slug, p.sku, pt.name, pt.short_description FROM products p JOIN product_translations pt ON pt.product_id = p.id WHERE p.category_id = ? AND pt.language = ? AND p.status = "published"';
     $params = [$category['id'], $language];
     if ($search !== '') {
         $query .= ' AND (pt.name LIKE ? OR p.sku LIKE ?)';
@@ -140,7 +140,7 @@ if ($segments[1] ?? '' === 'products' && isset($segments[2])) {
 
 if ($segments[1] ?? '' === 'product' && isset($segments[2])) {
     $slug = $segments[2];
-    $stmt = db()->prepare('SELECT p.id, p.slug, p.sku, pt.name, pt.short_description, pt.description, pt.meta_title, pt.meta_description, pt.h1 FROM products p JOIN product_translations pt ON pt.product_id = p.id WHERE p.slug = ? AND pt.language = ?');
+    $stmt = db()->prepare('SELECT p.id, p.slug, p.sku, pt.name, pt.short_description, pt.description, pt.meta_title, pt.meta_description, pt.h1 FROM products p JOIN product_translations pt ON pt.product_id = p.id WHERE p.slug = ? AND pt.language = ? AND p.status = "published"');
     $stmt->execute([$slug, $language]);
     $product = $stmt->fetch();
     if (!$product) {
@@ -185,7 +185,7 @@ if ($slug === '') {
     $slug = 'home';
 }
 
-$stmt = db()->prepare('SELECT p.id, p.slug, pt.title, pt.h1, pt.meta_title, pt.meta_description, pt.canonical, pt.robots, pt.og_title, pt.og_description, pt.indexable FROM pages p JOIN page_translations pt ON pt.page_id = p.id WHERE p.slug = ? AND pt.language = ?');
+$stmt = db()->prepare('SELECT p.id, p.slug, p.status, pt.title, pt.h1, pt.meta_title, pt.meta_description, pt.canonical, pt.robots, pt.og_title, pt.og_description, pt.custom_html, pt.custom_css, pt.use_layout, pt.replace_styles, pt.indexable FROM pages p JOIN page_translations pt ON pt.page_id = p.id WHERE p.slug = ? AND pt.language = ? AND p.status = "published"');
 $stmt->execute([$slug, $language]);
 $page = $stmt->fetch();
 if (!$page) {

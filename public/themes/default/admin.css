@@ -262,12 +262,74 @@ h2 {
     font-weight: 500;
     border: 1px solid transparent;
     border-bottom: none;
+    background: none;
+    cursor: pointer;
 }
 
 .tab.is-active {
     color: var(--text);
     background: #ffffff;
     border-color: var(--border);
+}
+
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.is-active {
+    display: grid;
+    gap: 16px;
+}
+
+.filter-card {
+    margin-bottom: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.filter-card .field {
+    flex: 1;
+}
+
+.checkbox-group {
+    display: grid;
+    gap: 8px;
+}
+
+.repeatable-table {
+    display: grid;
+    gap: 8px;
+}
+
+.repeatable-row {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 120px;
+    gap: 8px;
+}
+
+.repeatable-row--head {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+}
+
+.repeatable-row--head span {
+    padding-left: 4px;
+}
+
+.media-preview img {
+    max-width: 180px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: #ffffff;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .btn {

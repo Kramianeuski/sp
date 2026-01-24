@@ -28,6 +28,7 @@ function config(string $key, mixed $default = null): mixed
 function t(string $key, string $language): string
 {
     static $cache = [];
+    static $missing = [];
 
     if (!isset($cache[$language])) {
         $stmt = db()->prepare('SELECT `key`, `value` FROM translations WHERE language = ?');
@@ -38,7 +39,27 @@ function t(string $key, string $language): string
         }
     }
 
-    return $cache[$language][$key] ?? $key;
+    if (isset($cache[$language][$key])) {
+        return $cache[$language][$key];
+    }
+
+    $missingKey = $language . ':' . $key;
+    if (!isset($missing[$missingKey])) {
+        $missing[$missingKey] = true;
+        $logDir = __DIR__ . '/../storage/logs';
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0775, true);
+        }
+        $payload = [
+            'time' => date('c'),
+            'language' => $language,
+            'key' => $key,
+            'path' => $_SERVER['REQUEST_URI'] ?? '',
+        ];
+        file_put_contents($logDir . '/missing_translations.log', json_encode($payload, JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND);
+    }
+
+    return '[[' . $key . ']]';
 }
 
 function render(string $template, array $data = []): void
