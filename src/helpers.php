@@ -159,38 +159,44 @@ function partners_list(string $language): array
     if ($language === 'en') {
         return [
             [
-                'name' => 'SISSOL',
+                'name' => 'Argument Energo (Moscow)',
+                'url' => 'https://argument-energo.ru',
+                'note' => 'Official distributor',
+                'description' => 'Structured System Power catalog by series and configurations for fast selection. Project-oriented supply with attention to documentation and delivery terms.',
+            ],
+            [
+                'name' => 'Systemnye Resheniya / SISSOL (Smolensk)',
                 'url' => 'https://sissol.ru',
                 'note' => 'Official distributor',
+                'description' => '10+ years in power supply and lighting. Direct distributor contracts ensure documented origin, quality and warranty support, plus engineering guidance for project-specific selection.',
             ],
             [
-                'name' => 'PowerMarket',
-                'url' => 'https://powermarket.example',
-                'note' => 'Wholesale partner',
-            ],
-            [
-                'name' => 'ElectroHub',
-                'url' => 'https://electrohub.example',
-                'note' => 'Regional supplier',
+                'name' => 'Vseinstrumenti',
+                'url' => 'https://www.vseinstrumenti.ru',
+                'note' => 'Marketplace channel',
+                'description' => 'Marketplace access for quick purchasing and logistics. Terms depend on the specific marketplace sales format.',
             ],
         ];
     }
 
     return [
         [
-            'name' => 'SISSOL',
+            'name' => 'Аргумент Энерго (Москва)',
+            'url' => 'https://argument-energo.ru',
+            'note' => 'Официальный дистрибьютор',
+            'description' => 'Партнёр специализируется на поставках электротехнической продукции для объектов и монтажных организаций. Каталог System Power структурирован по сериям и исполнениям, что упрощает выбор конфигурации. Компания ориентирована на корректную работу с документацией и сопровождение поставки. Подходит для проектов, где важны сроки, ассортимент и понятные условия.',
+        ],
+        [
+            'name' => 'ООО «Системные Решения» / SISSOL (Смоленск)',
             'url' => 'https://sissol.ru',
             'note' => 'Официальный дистрибьютор',
+            'description' => 'Компания работает в сфере электроснабжения и электроосвещения более 10 лет. Продукция поставляется по прямым дистрибьюторским контрактам, что позволяет подтверждать происхождение, качество и гарантийные обязательства. Партнёр помогает с подбором оптимального решения и сопровождает проектные задачи. География проектов включает регионы России и страны ЕАЭС.',
         ],
         [
-            'name' => 'PowerMarket',
-            'url' => 'https://powermarket.example',
-            'note' => 'Оптовый партнёр',
-        ],
-        [
-            'name' => 'ElectroHub',
-            'url' => 'https://electrohub.example',
-            'note' => 'Региональный поставщик',
+            'name' => 'ВсеИнструменты',
+            'url' => 'https://www.vseinstrumenti.ru',
+            'note' => 'Маркетплейс / онлайн-гипермаркет',
+            'description' => 'Канал для оперативных закупок и широкого доступа к ассортименту. Маркетплейс удобен для сравнения характеристик и быстрой логистики, особенно для типовых потребностей. Подходит как массовый канал доступности System Power для монтажников и конечных заказчиков. Условия поставки и документооборот зависят от формата конкретной продажи на платформе.',
         ],
     ];
 }

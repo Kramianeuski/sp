@@ -14,6 +14,7 @@
     </div>
     <?php foreach (['ru' => 'RU', 'en' => 'EN'] as $lang => $label) : ?>
         <?php $data = $settings[$lang] ?? []; ?>
+        <?php $navLinks = $lang === 'ru' ? ($nav_ru ?? []) : ($nav_en ?? []); ?>
         <div class="tab-panel" data-tab-group="header-edit" data-tab-panel="<?= $lang ?>">
             <label class="checkbox-field">
                 <input type="checkbox" name="header_show_logo_<?= $lang ?>" value="1" <?= !empty($data['header_show_logo']) ? 'checked' : '' ?>>
@@ -35,6 +36,30 @@
                     </div>
                 </div>
             <?php endif; ?>
+            <div class="field">
+                <label><?= htmlspecialchars(t('admin.header_links', 'ru'), ENT_QUOTES) ?></label>
+                <div class="repeatable-table">
+                    <div class="repeatable-row repeatable-row--head">
+                        <span><?= htmlspecialchars(t('admin.header_link_label', 'ru'), ENT_QUOTES) ?></span>
+                        <span><?= htmlspecialchars(t('admin.header_link_url', 'ru'), ENT_QUOTES) ?></span>
+                        <span><?= htmlspecialchars(t('admin.sort_order', 'ru'), ENT_QUOTES) ?></span>
+                    </div>
+                    <?php foreach ($navLinks as $link) : ?>
+                        <div class="repeatable-row">
+                            <input type="text" name="header_links_label_<?= $lang ?>[]" value="<?= htmlspecialchars($link['label'], ENT_QUOTES) ?>">
+                            <input type="text" name="header_links_url_<?= $lang ?>[]" value="<?= htmlspecialchars($link['url'], ENT_QUOTES) ?>">
+                            <input type="number" name="header_links_sort_<?= $lang ?>[]" value="<?= htmlspecialchars($link['sort_order'], ENT_QUOTES) ?>">
+                        </div>
+                    <?php endforeach; ?>
+                    <?php for ($i = 0; $i < 3; $i++) : ?>
+                        <div class="repeatable-row">
+                            <input type="text" name="header_links_label_<?= $lang ?>[]" value="">
+                            <input type="text" name="header_links_url_<?= $lang ?>[]" value="">
+                            <input type="number" name="header_links_sort_<?= $lang ?>[]" value="">
+                        </div>
+                    <?php endfor; ?>
+                </div>
+            </div>
         </div>
     <?php endforeach; ?>
     <button type="submit" class="btn btn-primary"><?= htmlspecialchars(t('admin.save', 'ru'), ENT_QUOTES) ?></button>

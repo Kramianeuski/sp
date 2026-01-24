@@ -9,8 +9,20 @@
         </nav>
         <h1><?= htmlspecialchars($category['h1'], ENT_QUOTES) ?></h1>
         <p><?= nl2br(htmlspecialchars($category['description'], ENT_QUOTES)) ?></p>
+        <?php
+        $catalogLabel = t('cta.view_models', $language);
+        if (!empty($category['slug'])) {
+            if ($category['slug'] === 'electrical-enclosures') {
+                $catalogLabel = $language === 'ru' ? 'Каталог РУСП' : 'RUSP catalog';
+            } elseif ($category['slug'] === 'floor-boxes') {
+                $catalogLabel = $language === 'ru' ? 'Каталог лючков' : 'Floor box catalog';
+            }
+        }
+        ?>
         <div class="hero-actions">
-            <a class="button" href="#products-list"><?= htmlspecialchars(t('cta.view_models', $language), ENT_QUOTES) ?></a>
+            <a class="button" href="#products-list"><?= htmlspecialchars($catalogLabel, ENT_QUOTES) ?></a>
+            <a class="button secondary" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/documentation/"><?= htmlspecialchars(t('cta.documents', $language), ENT_QUOTES) ?></a>
+            <a class="button secondary" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/where-to-buy/"><?= htmlspecialchars(t('where_to_buy.button', $language), ENT_QUOTES) ?></a>
         </div>
     </div>
 </section>

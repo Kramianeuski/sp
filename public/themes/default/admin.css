@@ -170,6 +170,14 @@ h2 {
     white-space: nowrap;
 }
 
+.inline-form {
+    display: inline;
+}
+
+.inline-form .btn-link {
+    color: var(--muted);
+}
+
 .form-card {
     display: grid;
     gap: 16px;
