@@ -2,6 +2,7 @@
 $isHome = ($page['slug'] ?? '') === 'home';
 $isWhereToBuy = ($page['slug'] ?? '') === 'where-to-buy';
 $isContacts = ($page['slug'] ?? '') === 'contacts';
+$isDocumentation = ($page['slug'] ?? '') === 'documentation';
 ?>
 <?php if (!$isHome) : ?>
     <?php if ($isWhereToBuy || $isContacts) : ?>
@@ -37,6 +38,9 @@ $isContacts = ($page['slug'] ?? '') === 'contacts';
 <?php foreach ($blocks as $block) : ?>
     <?php
     if ($isHome && $block['block_key'] === 'official-seller') {
+        continue;
+    }
+    if ($isDocumentation && $block['block_key'] === 'partners') {
         continue;
     }
     $blockTemplate = __DIR__ . '/blocks/' . $block['block_key'] . '.php';
