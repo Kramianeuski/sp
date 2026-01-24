@@ -1,7 +1,22 @@
 <?php
 $isHome = ($page['slug'] ?? '') === 'home';
+$isWhereToBuy = ($page['slug'] ?? '') === 'where-to-buy';
+$isContacts = ($page['slug'] ?? '') === 'contacts';
 ?>
 <?php if (!$isHome) : ?>
+    <?php if ($isWhereToBuy || $isContacts) : ?>
+        <section class="map-banner">
+            <iframe
+                src="<?= $isWhereToBuy
+                    ? 'https://yandex.ru/map-widget/v1/?ll=34.765130%2C55.202455&z=5&pt=32.055806%2C54.774769,pm2rdm~37.474453%2C55.630141,pm2blm'
+                    : 'https://yandex.ru/map-widget/v1/?ll=32.055806%2C54.774769&z=16&pt=32.055806%2C54.774769,pm2rdm' ?>"
+                width="100%" height="420" frameborder="0"
+                style="border:0"
+                allowfullscreen
+                loading="lazy"
+            ></iframe>
+        </section>
+    <?php endif; ?>
 <section class="page-header">
     <div class="container">
         <nav class="breadcrumbs">

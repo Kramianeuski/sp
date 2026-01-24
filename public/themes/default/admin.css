@@ -305,6 +305,17 @@ h2 {
     gap: 8px;
 }
 
+.checkbox-list {
+    display: grid;
+    gap: 10px;
+}
+
+.inline-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 8px;
+}
+
 .repeatable-table {
     display: grid;
     gap: 8px;
@@ -314,6 +325,10 @@ h2 {
     display: grid;
     grid-template-columns: 1fr 1.2fr 120px;
     gap: 8px;
+}
+
+.repeatable-row--two {
+    grid-template-columns: 1fr 120px;
 }
 
 .repeatable-row--head {
@@ -479,6 +494,23 @@ h2 {
     color: #ffb4c4;
     padding: 12px;
     border-radius: 10px;
+}
+
+.alert {
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #f9fafb;
+}
+
+.alert-warning {
+    border-color: #f0c36d;
+    background: #fff4d6;
+    color: #5f4400;
+}
+
+.table-wrapper {
+    overflow-x: auto;
 }
 
 .back-link {

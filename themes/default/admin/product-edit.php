@@ -34,6 +34,17 @@
             <option value="archived" <?= ($product['status'] ?? '') === 'archived' ? 'selected' : '' ?>><?= htmlspecialchars(t('admin.status_archived', 'ru'), ENT_QUOTES) ?></option>
         </select>
     </div>
+    <div class="field">
+        <label><?= htmlspecialchars(t('admin.product_partners', 'ru'), ENT_QUOTES) ?></label>
+        <div class="checkbox-list">
+            <?php foreach ($partners as $partner) : ?>
+                <label class="checkbox-field">
+                    <input type="checkbox" name="partner_ids[]" value="<?= htmlspecialchars($partner['id'], ENT_QUOTES) ?>" <?= in_array($partner['id'], $partnerSelections, true) ? 'checked' : '' ?>>
+                    <?= htmlspecialchars($partner['name'], ENT_QUOTES) ?> (<?= htmlspecialchars(t('partner.type.' . $partner['type'], 'ru'), ENT_QUOTES) ?>)
+                </label>
+            <?php endforeach; ?>
+        </div>
+    </div>
     <div class="tabs" data-tabs="product-edit">
         <button type="button" class="tab" data-tab-target="ru">RU</button>
         <button type="button" class="tab" data-tab-target="en">EN</button>
@@ -69,6 +80,24 @@
                 <input type="checkbox" name="indexable_<?= $lang ?>" value="1" <?= !empty($data['indexable']) ? 'checked' : '' ?>>
                 <?= htmlspecialchars(t('admin.indexable', 'ru'), ENT_QUOTES) ?>
             </label>
+            <div class="field">
+                <label><?= htmlspecialchars(t('admin.product_documents', 'ru'), ENT_QUOTES) ?></label>
+                <div class="repeatable-table">
+                    <div class="repeatable-row repeatable-row--head repeatable-row--two">
+                        <span><?= htmlspecialchars(t('admin.document_title', 'ru'), ENT_QUOTES) ?></span>
+                        <span><?= htmlspecialchars(t('admin.sort_order', 'ru'), ENT_QUOTES) ?></span>
+                    </div>
+                    <?php foreach ($documentsByLanguage[$lang] ?? [] as $doc) : ?>
+                        <div class="repeatable-row repeatable-row--two">
+                            <label class="checkbox-field">
+                                <input type="checkbox" name="document_ids_<?= $lang ?>[]" value="<?= htmlspecialchars($doc['id'], ENT_QUOTES) ?>" <?= array_key_exists($doc['id'], $documentSelections) ? 'checked' : '' ?>>
+                                <?= htmlspecialchars($doc['title'], ENT_QUOTES) ?>
+                            </label>
+                            <input type="number" name="document_sort_<?= $lang ?>[<?= htmlspecialchars($doc['id'], ENT_QUOTES) ?>]" value="<?= htmlspecialchars($documentSelections[$doc['id']] ?? 0, ENT_QUOTES) ?>">
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
         </div>
     <?php endforeach; ?>
     <div class="form-actions">
