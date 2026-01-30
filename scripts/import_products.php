@@ -10,16 +10,6 @@ if (!file_exists($sourcePath)) {
     exit(1);
 }
 
-function slugify(string $value): string
-{
-    $value = trim(mb_strtolower($value));
-    $value = preg_replace('/[^a-z0-9\-]+/u', '-', $value);
-    $value = preg_replace('/-+/', '-', $value);
-    $value = trim($value, '-');
-
-    return $value !== '' ? $value : 'item';
-}
-
 function download_file(string $url, string $targetPath): bool
 {
     if (file_exists($targetPath)) {
@@ -82,14 +72,15 @@ while (($row = fgetcsv($handle, 0, ',')) !== false) {
     $metaTitleRu = trim($row[$map['meta_title_ru']] ?? $nameRu);
     $metaDescriptionRu = trim($row[$map['meta_description_ru']] ?? '');
     $metaH1Ru = trim($row[$map['meta_h1_ru']] ?? $nameRu);
+    $productIdStmt = $pdo->prepare('SELECT id FROM products WHERE sku = ? LIMIT 1');
+    $productIdStmt->execute([$sku]);
+    $productId = (int) $productIdStmt->fetchColumn();
     $slugRu = trim($row[$map['seo_keyword_ru']] ?? '');
     if ($slugRu === '') {
         $slugRu = slugify($nameRu);
     }
-
-    $productIdStmt = $pdo->prepare('SELECT id FROM products WHERE sku = ? LIMIT 1');
-    $productIdStmt->execute([$sku]);
-    $productId = (int) $productIdStmt->fetchColumn();
+    $slugRu = unique_product_slug($slugRu, 'ru', $productId ?: null);
+    $slugEn = unique_product_slug($slugRu, 'en', $productId ?: null);
 
     $pdo->beginTransaction();
     if ($productId) {
@@ -114,7 +105,8 @@ while (($row = fgetcsv($handle, 0, ',')) !== false) {
         VALUES ("product", ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ON DUPLICATE KEY UPDATE title = VALUES(title), description = VALUES(description), h1 = VALUES(h1), slug = VALUES(slug), updated_at = NOW()');
     foreach (['ru', 'en'] as $locale) {
-        $updateSeo->execute([$productId, $locale, $metaTitleRu, $metaDescriptionRu, $metaH1Ru, $slugRu]);
+        $slug = $locale === 'ru' ? $slugRu : $slugEn;
+        $updateSeo->execute([$productId, $locale, $metaTitleRu, $metaDescriptionRu, $metaH1Ru, $slug]);
     }
 
     $pdo->prepare('DELETE FROM product_specs_i18n WHERE product_spec_id IN (SELECT id FROM product_specs WHERE product_id = ?)')->execute([$productId]);

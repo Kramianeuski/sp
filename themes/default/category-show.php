@@ -32,7 +32,7 @@
                 <p><?= htmlspecialchars(t('products.empty', $language), ENT_QUOTES) ?></p>
             <?php endif; ?>
             <?php foreach ($products as $index => $product) : ?>
-                <a class="product-card" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/products/<?= htmlspecialchars($category['slug'], ENT_QUOTES) ?>/<?= htmlspecialchars($product['slug'], ENT_QUOTES) ?>/">
+                <a class="product-card" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/product/<?= htmlspecialchars($product['slug'], ENT_QUOTES) ?>/">
                     <div class="product-card-content">
                         <h3><?= htmlspecialchars($product['name'], ENT_QUOTES) ?></h3>
                         <p><?= htmlspecialchars($product['short_description'], ENT_QUOTES) ?></p>

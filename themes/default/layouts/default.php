@@ -34,6 +34,10 @@ if (!str_starts_with($currentPath, '/ru/') && !str_starts_with($currentPath, '/e
     $ruLink = '/ru/';
     $enLink = '/en/';
 }
+if (!empty($pageData['hreflang']) && is_array($pageData['hreflang'])) {
+    $ruLink = $pageData['hreflang']['ru'] ?? $ruLink;
+    $enLink = $pageData['hreflang']['en'] ?? $enLink;
+}
 
 $breadcrumbs = [
     [
@@ -47,10 +51,43 @@ $segments = array_values(array_filter(explode('/', trim($currentPath, '/'))));
 if (isset($segments[1])) {
     $pathSlug = $segments[1];
     if ($pathSlug === 'products' && isset($segments[2])) {
-        $stmt = db()->prepare('SELECT ci.name FROM categories c JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ? JOIN seo_meta sm ON sm.entity_type = "category" AND sm.entity_id = c.id AND sm.locale = ? WHERE sm.slug = ?');
+        $stmt = db()->prepare(
+            'SELECT ci.name, sm.slug
+             FROM categories c
+             JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ?
+             JOIN seo_meta sm ON sm.entity_type = "category" AND sm.entity_id = c.id AND sm.locale = ?
+             WHERE sm.slug = ?'
+        );
         $stmt->execute([$language, $language, $segments[2]]);
-        $name = $stmt->fetchColumn();
-        if ($name) {
+        $categoryName = $stmt->fetchColumn();
+        if ($categoryName) {
+            $breadcrumbs[] = [
+                '@type' => 'ListItem',
+                'position' => 2,
+                'name' => t('nav.products', $language),
+                'item' => $baseUrl . '/' . $language . '/products/',
+            ];
+            $breadcrumbs[] = [
+                '@type' => 'ListItem',
+                'position' => 3,
+                'name' => $categoryName,
+                'item' => $baseUrl . '/' . $language . '/products/' . $segments[2] . '/',
+            ];
+        }
+    } elseif ($pathSlug === 'product' && isset($segments[2])) {
+        $stmt = db()->prepare(
+            'SELECT pi.name AS product_name, ci.name AS category_name, cm.slug AS category_slug
+             FROM products p
+             JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = ?
+             JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ?
+             JOIN categories c ON c.id = p.category_id
+             JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ?
+             JOIN seo_meta cm ON cm.entity_type = "category" AND cm.entity_id = c.id AND cm.locale = ?
+             WHERE sm.slug = ?'
+        );
+        $stmt->execute([$language, $language, $language, $language, $segments[2]]);
+        $productRow = $stmt->fetch();
+        if ($productRow) {
             $breadcrumbs[] = [
                 '@type' => 'ListItem',
                 'position' => 2,
@@ -66,35 +103,9 @@ if (isset($segments[1])) {
             $breadcrumbs[] = [
                 '@type' => 'ListItem',
                 'position' => 4,
-                'name' => $productRow['name'],
+                'name' => $productRow['product_name'],
                 'item' => $baseUrl . '/' . $language . '/product/' . $segments[2] . '/',
             ];
-        }
-        if (isset($segments[3])) {
-            $stmt = db()->prepare('SELECT pi.name FROM products p JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = ? JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ? WHERE sm.slug = ?');
-            $stmt->execute([$language, $language, $segments[3]]);
-            $productName = $stmt->fetchColumn();
-            if ($productName) {
-                $breadcrumbs[] = [
-                    '@type' => 'ListItem',
-                    'position' => 4,
-                    'name' => $productName,
-                    'item' => $baseUrl . '/' . $language . '/products/' . $segments[2] . '/' . $segments[3] . '/',
-                ];
-            }
-        }
-        if (isset($segments[3])) {
-            $stmt = db()->prepare('SELECT pi.name FROM products p JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = ? JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ? WHERE sm.slug = ?');
-            $stmt->execute([$language, $language, $segments[3]]);
-            $productName = $stmt->fetchColumn();
-            if ($productName) {
-                $breadcrumbs[] = [
-                    '@type' => 'ListItem',
-                    'position' => 4,
-                    'name' => $productName,
-                    'item' => $baseUrl . '/' . $language . '/products/' . $segments[2] . '/' . $segments[3] . '/',
-                ];
-            }
         }
     } else {
         $stmt = db()->prepare('SELECT sm.title FROM pages p JOIN seo_meta sm ON sm.entity_type = "page" AND sm.entity_id = p.id AND sm.locale = ? WHERE p.slug = ?');
@@ -304,30 +315,26 @@ if (isset($segments[1])) {
 
     const heroVideo = document.querySelector('[data-hero-video]');
     const playButton = document.querySelector('[data-hero-play]');
-    const shouldDefer = navigator.connection && (navigator.connection.saveData || /2g/.test(navigator.connection.effectiveType || ''));
-    const loadVideo = () => {
-        if (!heroVideo || heroVideo.dataset.loaded === '1') {
+    const attemptPlay = () => {
+        if (!heroVideo) {
             return;
         }
-        const src = heroVideo.getAttribute('data-src');
-        if (src) {
-            heroVideo.src = src;
-            heroVideo.load();
-            heroVideo.dataset.loaded = '1';
-            heroVideo.play().catch(() => null);
+        const playPromise = heroVideo.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(() => {
+                playButton?.classList.add('is-visible');
+            });
         }
     };
-    if (!shouldDefer) {
+    if (heroVideo) {
         if ('requestIdleCallback' in window) {
-            requestIdleCallback(loadVideo, { timeout: 2000 });
+            requestIdleCallback(attemptPlay, { timeout: 1500 });
         } else {
-            setTimeout(loadVideo, 1200);
+            setTimeout(attemptPlay, 800);
         }
-    } else if (playButton) {
-        playButton.classList.add('is-visible');
     }
     playButton?.addEventListener('click', () => {
-        loadVideo();
+        heroVideo?.play().catch(() => null);
         playButton.classList.remove('is-visible');
     });
 </script>
