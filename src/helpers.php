@@ -284,11 +284,9 @@ function partners_list(string $language, ?string $type = null, bool $onlyActive 
 {
     $query = '
         SELECT p.id, p.type, p.name, p.url, p.city, p.sort_order,
-               m.path AS logo_path,
                pi.description
         FROM partners p
         JOIN partner_i18n pi ON pi.partner_id = p.id AND pi.locale = ?
-        LEFT JOIN media m ON m.id = p.logo_media_id
     ';
     $params = [$language];
     $conditions = [];

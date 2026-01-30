@@ -5,7 +5,7 @@
         <a class="btn btn-secondary" href="/admin/partners"><?= htmlspecialchars(t('admin.back', 'ru'), ENT_QUOTES) ?></a>
     </div>
 </div>
-<form method="post" class="card form-card" enctype="multipart/form-data">
+<form method="post" class="card form-card">
     <?= csrf_field() ?>
     <div class="field">
         <label><?= htmlspecialchars(t('admin.partner_type', 'ru'), ENT_QUOTES) ?></label>
@@ -25,16 +25,6 @@
     <div class="field">
         <label><?= htmlspecialchars(t('admin.partner_url', 'ru'), ENT_QUOTES) ?></label>
         <input type="text" name="url" value="<?= htmlspecialchars($partner['url'], ENT_QUOTES) ?>">
-    </div>
-    <div class="field">
-        <label><?= htmlspecialchars(t('admin.partner_logo', 'ru'), ENT_QUOTES) ?></label>
-        <?php if (!empty($partner['logo_media_id'])) : ?>
-            <?php $logoPath = media_path((int) $partner['logo_media_id']); ?>
-            <?php if ($logoPath) : ?>
-                <img src="<?= htmlspecialchars($logoPath, ENT_QUOTES) ?>" alt="<?= htmlspecialchars($partner['name'], ENT_QUOTES) ?>" style="max-width: 180px; margin-bottom: 12px;">
-            <?php endif; ?>
-        <?php endif; ?>
-        <input type="file" name="logo" accept="image/*">
     </div>
     <div class="field">
         <label><?= htmlspecialchars(t('admin.sort_order', 'ru'), ENT_QUOTES) ?></label>

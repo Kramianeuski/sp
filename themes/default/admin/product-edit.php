@@ -68,7 +68,7 @@
             </div>
             <div class="field">
                 <label><?= htmlspecialchars(t('admin.slug', 'ru'), ENT_QUOTES) ?></label>
-                <input type="text" name="slug_<?= $lang ?>" value="<?= htmlspecialchars($seoData['slug'] ?? '', ENT_QUOTES) ?>" readonly>
+                <input type="text" name="slug_<?= $lang ?>" value="<?= htmlspecialchars($seoData['slug'] ?? '', ENT_QUOTES) ?>">
             </div>
         </div>
     <?php endforeach; ?>

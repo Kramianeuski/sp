@@ -62,15 +62,17 @@ if ($path === '/sitemap.xml') {
         }
 
         $stmt = db()->prepare(
-            'SELECT p.id, sm.slug AS product_slug
+            'SELECT p.id, sm.slug AS product_slug, cm.slug AS category_slug
              FROM products p
              JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ?
+             JOIN categories c ON c.id = p.category_id
+             JOIN seo_meta cm ON cm.entity_type = "category" AND cm.entity_id = c.id AND cm.locale = ?
              WHERE p.is_active = 1'
         );
-        $stmt->execute([$language]);
+        $stmt->execute([$language, $language]);
 
         foreach ($stmt->fetchAll() as $product) {
-            $urls[] = '/' . $language . '/product/' . $product['product_slug'] . '/';
+            $urls[] = '/' . $language . '/products/' . $product['category_slug'] . '/' . $product['product_slug'] . '/';
         }
     }
 
@@ -431,21 +433,34 @@ if ($route === 'products' && $param !== null && $subparam === null) {
 |--------------------------------------------------------------------------
 */
 
-if ($route === 'product' && $param !== null) {
+if ($route === 'products' && $param !== null && $subparam !== null) {
+    $categoryStmt = db()->prepare(
+        'SELECT c.id, c.code, ci.name, sm.slug
+         FROM categories c
+         JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ?
+         JOIN seo_meta sm ON sm.entity_type = "category" AND sm.entity_id = c.id AND sm.locale = ?
+         WHERE sm.slug = ?
+           AND c.is_active = 1'
+    );
+    $categoryStmt->execute([$language, $language, $param]);
+    $category = $categoryStmt->fetch();
+
+    if (!$category) {
+        http_response_code(404);
+        render('404', ['language' => $language]);
+        exit;
+    }
+
     $stmt = db()->prepare(
-        'SELECT p.id, p.sku, p.category_id, pi.name, pi.short_description, pi.description, pi.is_html,
-                sm.title, sm.description AS meta_description, sm.h1, sm.slug,
-                ci.name AS category_name, cm.slug AS category_slug
+        'SELECT p.id, p.sku, pi.name, pi.short_description, pi.description, pi.is_html, sm.title, sm.description AS meta_description, sm.h1, sm.slug
          FROM products p
          JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = ?
          JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ?
-         JOIN categories c ON c.id = p.category_id
-         JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ?
-         JOIN seo_meta cm ON cm.entity_type = "category" AND cm.entity_id = c.id AND cm.locale = ?
          WHERE sm.slug = ?
+           AND p.category_id = ?
            AND p.is_active = 1'
     );
-    $stmt->execute([$language, $language, $language, $language, $param]);
+    $stmt->execute([$language, $language, $subparam, $category['id']]);
 
     $product = $stmt->fetch();
 
@@ -453,13 +468,6 @@ if ($route === 'product' && $param !== null) {
         http_response_code(404);
         render('404', ['language' => $language]);
         exit;
-    }
-
-    $slugStmt = db()->prepare('SELECT locale, slug FROM seo_meta WHERE entity_type = "product" AND entity_id = ?');
-    $slugStmt->execute([$product['id']]);
-    $productSlugs = [];
-    foreach ($slugStmt->fetchAll() as $row) {
-        $productSlugs[$row['locale']] = $row['slug'];
     }
 
     $images = db()->prepare(
@@ -480,11 +488,6 @@ if ($route === 'product' && $param !== null) {
     );
     $specs->execute([$language, $product['id']]);
 
-    $hreflang = [
-        'ru' => '/ru/product/' . ($productSlugs['ru'] ?? $product['slug']) . '/',
-        'en' => '/en/product/' . ($productSlugs['en'] ?? $product['slug']) . '/',
-    ];
-
     ob_start();
     render('product-show', [
         'language' => $language,
@@ -493,16 +496,12 @@ if ($route === 'product' && $param !== null) {
             'h1' => $product['h1'] ?? $product['name'],
             'meta_title' => $product['title'] ?? $product['name'],
             'meta_description' => $product['meta_description'] ?? $product['short_description'],
-            'canonical' => config('base_url') . $hreflang[$language],
+            'canonical' => config('base_url') . '/' . $language . '/products/' . $category['slug'] . '/' . $product['slug'] . '/',
             'og_title' => $product['title'] ?? $product['name'],
             'og_description' => $product['meta_description'] ?? $product['short_description'],
             'slug' => $product['slug'],
-            'language_links' => $hreflang,
         ],
-        'category' => [
-            'name' => $product['category_name'],
-            'slug' => $product['category_slug'],
-        ],
+        'category' => $category,
         'product' => $product,
         'images' => $images->fetchAll(),
         'specs' => $specs->fetchAll(),

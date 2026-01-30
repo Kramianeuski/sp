@@ -34,10 +34,6 @@ if (!str_starts_with($currentPath, '/ru/') && !str_starts_with($currentPath, '/e
     $ruLink = '/ru/';
     $enLink = '/en/';
 }
-$languageLinks = $pageData['language_links'] ?? [
-    'ru' => $ruLink,
-    'en' => $enLink,
-];
 
 $breadcrumbs = [
     [
@@ -50,20 +46,11 @@ $breadcrumbs = [
 $segments = array_values(array_filter(explode('/', trim($currentPath, '/'))));
 if (isset($segments[1])) {
     $pathSlug = $segments[1];
-    if ($pathSlug === 'product' && isset($segments[2])) {
-        $stmt = db()->prepare(
-            'SELECT pi.name, ci.name AS category_name, cm.slug AS category_slug
-             FROM products p
-             JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = ?
-             JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ?
-             JOIN categories c ON c.id = p.category_id
-             JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ?
-             JOIN seo_meta cm ON cm.entity_type = "category" AND cm.entity_id = c.id AND cm.locale = ?
-             WHERE sm.slug = ?'
-        );
-        $stmt->execute([$language, $language, $language, $language, $segments[2]]);
-        $productRow = $stmt->fetch();
-        if ($productRow) {
+    if ($pathSlug === 'products' && isset($segments[2])) {
+        $stmt = db()->prepare('SELECT ci.name FROM categories c JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ? JOIN seo_meta sm ON sm.entity_type = "category" AND sm.entity_id = c.id AND sm.locale = ? WHERE sm.slug = ?');
+        $stmt->execute([$language, $language, $segments[2]]);
+        $name = $stmt->fetchColumn();
+        if ($name) {
             $breadcrumbs[] = [
                 '@type' => 'ListItem',
                 'position' => 2,
@@ -83,23 +70,18 @@ if (isset($segments[1])) {
                 'item' => $baseUrl . '/' . $language . '/product/' . $segments[2] . '/',
             ];
         }
-    } elseif ($pathSlug === 'products' && isset($segments[2])) {
-        $stmt = db()->prepare('SELECT ci.name FROM categories c JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ? JOIN seo_meta sm ON sm.entity_type = "category" AND sm.entity_id = c.id AND sm.locale = ? WHERE sm.slug = ?');
-        $stmt->execute([$language, $language, $segments[2]]);
-        $name = $stmt->fetchColumn();
-        if ($name) {
-            $breadcrumbs[] = [
-                '@type' => 'ListItem',
-                'position' => 2,
-                'name' => t('nav.products', $language),
-                'item' => $baseUrl . '/' . $language . '/products/',
-            ];
-            $breadcrumbs[] = [
-                '@type' => 'ListItem',
-                'position' => 3,
-                'name' => $name,
-                'item' => $baseUrl . '/' . $language . '/products/' . $segments[2] . '/',
-            ];
+        if (isset($segments[3])) {
+            $stmt = db()->prepare('SELECT pi.name FROM products p JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = ? JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ? WHERE sm.slug = ?');
+            $stmt->execute([$language, $language, $segments[3]]);
+            $productName = $stmt->fetchColumn();
+            if ($productName) {
+                $breadcrumbs[] = [
+                    '@type' => 'ListItem',
+                    'position' => 4,
+                    'name' => $productName,
+                    'item' => $baseUrl . '/' . $language . '/products/' . $segments[2] . '/' . $segments[3] . '/',
+                ];
+            }
         }
         if (isset($segments[3])) {
             $stmt = db()->prepare('SELECT pi.name FROM products p JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = ? JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ? WHERE sm.slug = ?');
@@ -140,8 +122,8 @@ if (isset($segments[1])) {
     <?php if (!empty($canonical)) : ?>
         <link rel="canonical" href="<?= htmlspecialchars($canonical, ENT_QUOTES) ?>">
     <?php endif; ?>
-    <link rel="alternate" href="<?= htmlspecialchars($baseUrl . ($languageLinks['ru'] ?? $ruLink), ENT_QUOTES) ?>" hreflang="ru">
-    <link rel="alternate" href="<?= htmlspecialchars($baseUrl . ($languageLinks['en'] ?? $enLink), ENT_QUOTES) ?>" hreflang="en">
+    <link rel="alternate" href="<?= htmlspecialchars($baseUrl . $ruLink, ENT_QUOTES) ?>" hreflang="ru">
+    <link rel="alternate" href="<?= htmlspecialchars($baseUrl . $enLink, ENT_QUOTES) ?>" hreflang="en">
     <meta property="og:title" content="<?= htmlspecialchars($ogTitle, ENT_QUOTES) ?>">
     <meta property="og:description" content="<?= htmlspecialchars($ogDescription, ENT_QUOTES) ?>">
     <meta property="og:type" content="website">
@@ -198,8 +180,8 @@ if (isset($segments[1])) {
             </a>
             <div class="nav-footer">
                 <div class="nav-language">
-                    <a href="<?= htmlspecialchars($languageLinks['ru'] ?? $ruLink, ENT_QUOTES) ?>" <?= $language === 'ru' ? 'class="active"' : '' ?>><?= htmlspecialchars(t('lang.ru', $language), ENT_QUOTES) ?></a>
-                    <a href="<?= htmlspecialchars($languageLinks['en'] ?? $enLink, ENT_QUOTES) ?>" <?= $language === 'en' ? 'class="active"' : '' ?>><?= htmlspecialchars(t('lang.en', $language), ENT_QUOTES) ?></a>
+                    <a href="<?= htmlspecialchars($ruLink, ENT_QUOTES) ?>" <?= $language === 'ru' ? 'class="active"' : '' ?>><?= htmlspecialchars(t('lang.ru', $language), ENT_QUOTES) ?></a>
+                    <a href="<?= htmlspecialchars($enLink, ENT_QUOTES) ?>" <?= $language === 'en' ? 'class="active"' : '' ?>><?= htmlspecialchars(t('lang.en', $language), ENT_QUOTES) ?></a>
                 </div>
             </div>
         </nav>
@@ -210,8 +192,8 @@ if (isset($segments[1])) {
                 </a>
             <?php endif; ?>
             <div class="language-switch">
-                <a href="<?= htmlspecialchars($languageLinks['ru'] ?? $ruLink, ENT_QUOTES) ?>" <?= $language === 'ru' ? 'class="active"' : '' ?>><?= htmlspecialchars(t('lang.ru', $language), ENT_QUOTES) ?></a>
-                <a href="<?= htmlspecialchars($languageLinks['en'] ?? $enLink, ENT_QUOTES) ?>" <?= $language === 'en' ? 'class="active"' : '' ?>><?= htmlspecialchars(t('lang.en', $language), ENT_QUOTES) ?></a>
+                <a href="<?= htmlspecialchars($ruLink, ENT_QUOTES) ?>" <?= $language === 'ru' ? 'class="active"' : '' ?>><?= htmlspecialchars(t('lang.ru', $language), ENT_QUOTES) ?></a>
+                <a href="<?= htmlspecialchars($enLink, ENT_QUOTES) ?>" <?= $language === 'en' ? 'class="active"' : '' ?>><?= htmlspecialchars(t('lang.en', $language), ENT_QUOTES) ?></a>
             </div>
         </div>
     </div>
@@ -251,10 +233,7 @@ if (isset($segments[1])) {
                 <div class="footer-text"><?= nl2br(htmlspecialchars(t('footer.contacts_text', $language), ENT_QUOTES)) ?></div>
                 <div class="footer-social">
                     <a href="<?= htmlspecialchars(t('footer.telegram_link', $language), ENT_QUOTES) ?>" target="_blank" rel="noopener noreferrer">
-                        <svg class="telegram-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path fill="currentColor" d="M21.75 3.5a1.2 1.2 0 0 0-1.27-.2L2.9 9.76a1.2 1.2 0 0 0 .06 2.27l4.7 1.52 1.79 5.71a1.2 1.2 0 0 0 2.16.3l2.63-3.63 4.95 3.61a1.2 1.2 0 0 0 1.9-.68l2.94-13.2a1.2 1.2 0 0 0-.38-1.16Zm-4.56 4.75-7.8 7.08a1.1 1.1 0 0 0-.32.56l-.63 2.71-1.05-3.34a1.2 1.2 0 0 0-.78-.8l-2.78-.9 13.15-4.3-7.79 7.09 8.87-8.1Z"/>
-                        </svg>
-                        <span class="sr-only"><?= htmlspecialchars(t('footer.telegram_label', $language), ENT_QUOTES) ?></span>
+                        <?= htmlspecialchars(t('footer.telegram_label', $language), ENT_QUOTES) ?>
                     </a>
                 </div>
             </div>
@@ -331,20 +310,12 @@ if (isset($segments[1])) {
             return;
         }
         const src = heroVideo.getAttribute('data-src');
-        const sourceEl = heroVideo.querySelector('source');
-        if (src && heroVideo.getAttribute('src') !== src) {
-            heroVideo.setAttribute('src', src);
+        if (src) {
+            heroVideo.src = src;
+            heroVideo.load();
+            heroVideo.dataset.loaded = '1';
+            heroVideo.play().catch(() => null);
         }
-        if (src && sourceEl && sourceEl.getAttribute('src') !== src) {
-            sourceEl.setAttribute('src', src);
-        }
-        heroVideo.load();
-        heroVideo.dataset.loaded = '1';
-        heroVideo.play().catch(() => {
-            if (playButton) {
-                playButton.classList.add('is-visible');
-            }
-        });
     };
     if (!shouldDefer) {
         if ('requestIdleCallback' in window) {

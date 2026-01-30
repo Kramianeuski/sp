@@ -1,24 +1,3 @@
-<?php
-$sanitizeText = static function (?string $text): string {
-    if ($text === null) {
-        return '';
-    }
-    $patterns = [
-        '~<p[^>]*>.*?Индивидуальные решения.*?</p>~isu',
-        '~<p[^>]*>.*?Контакты для заказа.*?</p>~isu',
-        '~<p[^>]*>.*?sale@a-energ\\.ru.*?</p>~isu',
-        '~<p[^>]*>.*?\\+7\\s*495.*?</p>~isu',
-        '~sale@a-energ\\.ru~i',
-        '~\\+7\\s*495\\s*\\d{3}[- ]?\\d{2}[- ]?\\d{2}~',
-    ];
-    $clean = preg_replace($patterns, '', $text);
-    return trim($clean ?? '');
-};
-$cleanDescription = $sanitizeText($product['description'] ?? '');
-$cleanShort = $sanitizeText($product['short_description'] ?? '');
-$hasGallery = !empty($images);
-$hasMultipleImages = $hasGallery && count($images) > 1;
-?>
 <section class="page-header">
     <div class="container">
         <nav class="breadcrumbs">
@@ -31,27 +10,17 @@ $hasMultipleImages = $hasGallery && count($images) > 1;
             <span><?= htmlspecialchars($product['name'], ENT_QUOTES) ?></span>
         </nav>
         <h1><?= htmlspecialchars($product['h1'] ?? $product['name'], ENT_QUOTES) ?></h1>
-        <p><?= htmlspecialchars($cleanShort, ENT_QUOTES) ?></p>
+        <p><?= htmlspecialchars($product['short_description'], ENT_QUOTES) ?></p>
     </div>
 </section>
 <section class="section">
     <div class="container">
         <div class="product-layout">
             <div class="product-gallery">
-                <?php if ($hasGallery) : ?>
-                    <div class="product-gallery-frame" data-product-gallery>
-                        <div class="product-gallery-track" data-gallery-track>
-                            <?php foreach ($images as $index => $image) : ?>
-                                <figure class="product-gallery-slide" data-gallery-slide="<?= $index ?>">
-                                    <img src="<?= htmlspecialchars($image['path'], ENT_QUOTES) ?>" alt="<?= htmlspecialchars($image['alt_key'] ? t($image['alt_key'], $language) : $product['name'], ENT_QUOTES) ?>" <?= $index === 0 ? '' : 'loading="lazy"' ?>>
-                                </figure>
-                            <?php endforeach; ?>
-                        </div>
-                        <?php if ($hasMultipleImages) : ?>
-                            <button class="product-gallery-nav prev" type="button" data-gallery-prev aria-label="Previous image">←</button>
-                            <button class="product-gallery-nav next" type="button" data-gallery-next aria-label="Next image">→</button>
-                        <?php endif; ?>
-                    </div>
+                <?php if (!empty($images)) : ?>
+                    <?php foreach ($images as $image) : ?>
+                        <img src="<?= htmlspecialchars($image['path'], ENT_QUOTES) ?>" alt="<?= htmlspecialchars($image['alt_key'] ? t($image['alt_key'], $language) : $product['name'], ENT_QUOTES) ?>">
+                    <?php endforeach; ?>
                 <?php else : ?>
                     <div class="product-placeholder"></div>
                 <?php endif; ?>
@@ -60,9 +29,9 @@ $hasMultipleImages = $hasGallery && count($images) > 1;
                 <div class="product-description">
                     <h2><?= htmlspecialchars(t('product.description_title', $language), ENT_QUOTES) ?></h2>
                     <?php if (!empty($product['is_html'])) : ?>
-                        <div class="text-block"><?= $cleanDescription ?></div>
+                        <div class="text-block"><?= $product['description'] ?></div>
                     <?php else : ?>
-                        <p><?= nl2br(htmlspecialchars($cleanDescription, ENT_QUOTES)) ?></p>
+                        <p><?= nl2br(htmlspecialchars($product['description'], ENT_QUOTES)) ?></p>
                     <?php endif; ?>
                 </div>
                 <?php if (!empty($specs)) : ?>
@@ -87,7 +56,7 @@ $hasMultipleImages = $hasGallery && count($images) > 1;
     '@context' => 'https://schema.org',
     '@type' => 'Product',
     'name' => $product['name'],
-    'description' => strip_tags($cleanDescription),
+    'description' => strip_tags($product['description'] ?? ''),
     'image' => array_map(static fn(array $img) => config('base_url') . $img['path'], $images),
     'sku' => $product['sku'] ?? '',
     'brand' => [
