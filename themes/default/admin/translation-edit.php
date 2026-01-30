@@ -8,25 +8,24 @@
 <form method="post" class="card form-card">
     <?= csrf_field() ?>
     <div class="field">
-        <label for="translation-key"><?= htmlspecialchars(t('admin.translation_key', 'ru'), ENT_QUOTES) ?></label>
-        <input id="translation-key" type="text" value="<?= htmlspecialchars($key, ENT_QUOTES) ?>" readonly>
+        <label><?= htmlspecialchars(t('admin.translation_key', 'ru'), ENT_QUOTES) ?></label>
+        <input type="text" name="key" value="<?= htmlspecialchars($translation['key'] ?? '', ENT_QUOTES) ?>">
     </div>
-    <div class="tabs" data-tabs="translation-edit">
-        <button type="button" class="tab" data-tab-target="ru">RU</button>
-        <button type="button" class="tab" data-tab-target="en">EN</button>
+    <div class="field">
+        <label><?= htmlspecialchars(t('admin.language', 'ru'), ENT_QUOTES) ?></label>
+        <select name="locale">
+            <option value="ru" <?= ($translation['locale'] ?? '') === 'ru' ? 'selected' : '' ?>>RU</option>
+            <option value="en" <?= ($translation['locale'] ?? '') === 'en' ? 'selected' : '' ?>>EN</option>
+        </select>
     </div>
-    <div class="tab-panel" data-tab-group="translation-edit" data-tab-panel="ru">
-        <div class="field">
-            <label for="translation-value-ru"><?= htmlspecialchars(t('admin.translation_value', 'ru'), ENT_QUOTES) ?></label>
-            <textarea id="translation-value-ru" name="value_ru" rows="4"><?= htmlspecialchars($values['ru'] ?? '', ENT_QUOTES) ?></textarea>
-        </div>
+    <div class="field">
+        <label><?= htmlspecialchars(t('admin.translation_value', 'ru'), ENT_QUOTES) ?></label>
+        <textarea name="value" rows="6"><?= htmlspecialchars($translation['value'] ?? '', ENT_QUOTES) ?></textarea>
     </div>
-    <div class="tab-panel" data-tab-group="translation-edit" data-tab-panel="en">
-        <div class="field">
-            <label for="translation-value-en"><?= htmlspecialchars(t('admin.translation_value', 'ru'), ENT_QUOTES) ?></label>
-            <textarea id="translation-value-en" name="value_en" rows="4"><?= htmlspecialchars($values['en'] ?? '', ENT_QUOTES) ?></textarea>
-        </div>
-    </div>
+    <label class="checkbox-field">
+        <input type="checkbox" name="is_html" value="1" <?= !empty($translation['is_html']) ? 'checked' : '' ?>>
+        <?= htmlspecialchars(t('admin.is_html', 'ru'), ENT_QUOTES) ?>
+    </label>
     <button type="submit" class="btn btn-primary"><?= htmlspecialchars(t('admin.save', 'ru'), ENT_QUOTES) ?></button>
 </form>
 <?php include __DIR__ . '/partials/footer.php'; ?>

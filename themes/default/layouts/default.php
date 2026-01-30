@@ -1,28 +1,40 @@
 <?php
-$navStmt = db()->prepare('SELECT label, url FROM navigation_items WHERE language = ? ORDER BY sort_order');
-$navStmt->execute([$language]);
-$navItems = $navStmt->fetchAll();
-$siteSettings = db()->prepare('SELECT `key`, `value` FROM site_settings WHERE language = ?');
-$siteSettings->execute([$language]);
-$settings = [];
-foreach ($siteSettings->fetchAll() as $row) {
-    $settings[$row['key']] = $row['value'];
-}
-$footerLinksStmt = db()->prepare('SELECT label, url FROM footer_links WHERE language = ? ORDER BY sort_order');
-$footerLinksStmt->execute([$language]);
-$footerLinks = $footerLinksStmt->fetchAll();
+$baseUrl = config('base_url');
+$brandName = t('brand.name', $language);
+$brandDescription = t('brand.description', $language);
+$logoPath = t('brand.logo_path', $language);
+$logoAlt = t('brand.logo_alt', $language);
+$headerCta = t('nav.cta', $language);
+
+$categoriesStmt = db()->prepare(
+    'SELECT c.id, ci.name, sm.slug
+     FROM categories c
+     JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ?
+     JOIN seo_meta sm ON sm.entity_type = "category" AND sm.entity_id = c.id AND sm.locale = ?
+     WHERE c.is_active = 1
+     ORDER BY c.id'
+);
+$categoriesStmt->execute([$language, $language]);
+$categoryLinks = $categoriesStmt->fetchAll();
+
 $pageData = $page ?? [];
-$metaTitle = $pageData['meta_title'] ?? $pageData['title'] ?? $settings['site_title'] ?? '';
-$metaDescription = $pageData['meta_description'] ?? $settings['site_description'] ?? '';
+$metaTitle = $pageData['meta_title'] ?? $pageData['title'] ?? $brandName;
+$metaDescription = $pageData['meta_description'] ?? $brandDescription;
 $canonical = $pageData['canonical'] ?? '';
-$robots = $pageData['robots'] ?? 'index,follow';
 $ogTitle = $pageData['og_title'] ?? $metaTitle;
 $ogDescription = $pageData['og_description'] ?? $metaDescription;
-$useLayout = isset($pageData['use_layout']) ? (int) $pageData['use_layout'] : 1;
-$replaceStyles = isset($pageData['replace_styles']) ? (int) $pageData['replace_styles'] : 0;
-$customCss = $pageData['custom_css'] ?? '';
+$ogImageId = $pageData['og_image_id'] ?? null;
+$ogImage = $ogImageId ? media_path((int) $ogImageId) : null;
 $isHome = ($pageData['slug'] ?? '') === 'home';
-$baseUrl = config('base_url');
+
+$currentPath = $_SERVER['REQUEST_URI'] ?? '/';
+$ruLink = preg_replace('#^/en/#', '/ru/', $currentPath);
+$enLink = preg_replace('#^/ru/#', '/en/', $currentPath);
+if (!str_starts_with($currentPath, '/ru/') && !str_starts_with($currentPath, '/en/')) {
+    $ruLink = '/ru/';
+    $enLink = '/en/';
+}
+
 $breadcrumbs = [
     [
         '@type' => 'ListItem',
@@ -31,18 +43,18 @@ $breadcrumbs = [
         'item' => $baseUrl . '/' . $language . '/',
     ],
 ];
-$segments = array_values(array_filter(explode('/', trim($_SERVER['REQUEST_URI'], '/'))));
+$segments = array_values(array_filter(explode('/', trim($currentPath, '/'))));
 if (isset($segments[1])) {
     $pathSlug = $segments[1];
     if ($pathSlug === 'products' && isset($segments[2])) {
-        $stmt = db()->prepare('SELECT ct.name FROM categories c JOIN category_translations ct ON ct.category_id = c.id WHERE c.slug = ? AND ct.language = ?');
-        $stmt->execute([$segments[2], $language]);
+        $stmt = db()->prepare('SELECT ci.name FROM categories c JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ? JOIN seo_meta sm ON sm.entity_type = "category" AND sm.entity_id = c.id AND sm.locale = ? WHERE sm.slug = ?');
+        $stmt->execute([$language, $language, $segments[2]]);
         $name = $stmt->fetchColumn();
         if ($name) {
             $breadcrumbs[] = [
                 '@type' => 'ListItem',
                 'position' => 2,
-                'name' => t('products.h1', $language),
+                'name' => t('nav.products', $language),
                 'item' => $baseUrl . '/' . $language . '/products/',
             ];
             $breadcrumbs[] = [
@@ -52,27 +64,22 @@ if (isset($segments[1])) {
                 'item' => $baseUrl . '/' . $language . '/products/' . $segments[2] . '/',
             ];
         }
-    } elseif ($pathSlug === 'product' && isset($segments[2])) {
-        $stmt = db()->prepare('SELECT pt.name FROM products p JOIN product_translations pt ON pt.product_id = p.id WHERE p.slug = ? AND pt.language = ?');
-        $stmt->execute([$segments[2], $language]);
-        $name = $stmt->fetchColumn();
-        if ($name) {
-            $breadcrumbs[] = [
-                '@type' => 'ListItem',
-                'position' => 2,
-                'name' => t('products.h1', $language),
-                'item' => $baseUrl . '/' . $language . '/products/',
-            ];
-            $breadcrumbs[] = [
-                '@type' => 'ListItem',
-                'position' => 3,
-                'name' => $name,
-                'item' => $baseUrl . '/' . $language . '/product/' . $segments[2] . '/',
-            ];
+        if (isset($segments[3])) {
+            $stmt = db()->prepare('SELECT pi.name FROM products p JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = ? JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ? WHERE sm.slug = ?');
+            $stmt->execute([$language, $language, $segments[3]]);
+            $productName = $stmt->fetchColumn();
+            if ($productName) {
+                $breadcrumbs[] = [
+                    '@type' => 'ListItem',
+                    'position' => 4,
+                    'name' => $productName,
+                    'item' => $baseUrl . '/' . $language . '/products/' . $segments[2] . '/' . $segments[3] . '/',
+                ];
+            }
         }
     } else {
-        $stmt = db()->prepare('SELECT pt.title FROM pages p JOIN page_translations pt ON pt.page_id = p.id WHERE p.slug = ? AND pt.language = ?');
-        $stmt->execute([$pathSlug ?: 'home', $language]);
+        $stmt = db()->prepare('SELECT sm.title FROM pages p JOIN seo_meta sm ON sm.entity_type = "page" AND sm.entity_id = p.id AND sm.locale = ? WHERE p.slug = ?');
+        $stmt->execute([$language, $pathSlug ?: 'home']);
         $title = $stmt->fetchColumn();
         if ($title) {
             $breadcrumbs[] = [
@@ -92,39 +99,32 @@ if (isset($segments[1])) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($metaTitle, ENT_QUOTES) ?></title>
     <meta name="description" content="<?= htmlspecialchars($metaDescription, ENT_QUOTES) ?>">
-    <meta name="robots" content="<?= htmlspecialchars($robots, ENT_QUOTES) ?>">
+    <meta name="robots" content="index,follow">
     <?php if (!empty($canonical)) : ?>
         <link rel="canonical" href="<?= htmlspecialchars($canonical, ENT_QUOTES) ?>">
     <?php endif; ?>
-    <link rel="alternate" href="<?= htmlspecialchars($baseUrl . '/ru' . ($_SERVER['REQUEST_URI'] === '/ru/' ? '/' : substr($_SERVER['REQUEST_URI'], 3)), ENT_QUOTES) ?>" hreflang="ru">
-    <link rel="alternate" href="<?= htmlspecialchars($baseUrl . '/en' . ($_SERVER['REQUEST_URI'] === '/en/' ? '/' : substr($_SERVER['REQUEST_URI'], 3)), ENT_QUOTES) ?>" hreflang="en">
+    <link rel="alternate" href="<?= htmlspecialchars($baseUrl . $ruLink, ENT_QUOTES) ?>" hreflang="ru">
+    <link rel="alternate" href="<?= htmlspecialchars($baseUrl . $enLink, ENT_QUOTES) ?>" hreflang="en">
     <meta property="og:title" content="<?= htmlspecialchars($ogTitle, ENT_QUOTES) ?>">
     <meta property="og:description" content="<?= htmlspecialchars($ogDescription, ENT_QUOTES) ?>">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="<?= htmlspecialchars($baseUrl . $_SERVER['REQUEST_URI'], ENT_QUOTES) ?>">
-    <?php if (!$replaceStyles) : ?>
-        <link rel="stylesheet" href="/themes/default/styles.css">
-    <?php else : ?>
-        <style>
-            body { margin: 0; font-family: "Inter", "Segoe UI", sans-serif; }
-        </style>
+    <meta property="og:url" content="<?= htmlspecialchars($baseUrl . $currentPath, ENT_QUOTES) ?>">
+    <?php if ($ogImage) : ?>
+        <meta property="og:image" content="<?= htmlspecialchars($baseUrl . $ogImage, ENT_QUOTES) ?>">
     <?php endif; ?>
-    <?php if (!empty($customCss)) : ?>
-        <style><?= $customCss ?></style>
-    <?php endif; ?>
+    <link rel="stylesheet" href="/themes/default/styles.css">
 </head>
-<body class="<?= $isHome ? 'is-home' : '' ?><?= $useLayout ? '' : ' no-layout' ?>">
-<?php if ($useLayout) : ?>
+<body class="<?= $isHome ? 'is-home' : '' ?>">
 <header class="site-header<?= $isHome ? ' is-hero' : '' ?>">
     <div class="container">
         <div class="header-left">
-            <?php if (!empty($settings['header_show_logo']) && !empty($settings['header_logo_path'])) : ?>
-                <a class="logo logo-image" href="<?= htmlspecialchars($settings['header_logo_link'] ?? '/', ENT_QUOTES) ?>">
-                    <img src="<?= htmlspecialchars($settings['header_logo_path'], ENT_QUOTES) ?>" alt="<?= htmlspecialchars($settings['header_logo_alt'] ?? '', ENT_QUOTES) ?>">
-                </a>
-            <?php else : ?>
-                <a class="logo" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/"><?= htmlspecialchars($settings['brand_name'] ?? '', ENT_QUOTES) ?></a>
-            <?php endif; ?>
+            <a class="logo" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/">
+                <?php if (!empty($logoPath)) : ?>
+                    <img src="<?= htmlspecialchars($logoPath, ENT_QUOTES) ?>" alt="<?= htmlspecialchars($logoAlt, ENT_QUOTES) ?>">
+                <?php else : ?>
+                    <?= htmlspecialchars($brandName, ENT_QUOTES) ?>
+                <?php endif; ?>
+            </a>
         </div>
         <button class="nav-toggle" type="button" aria-label="<?= htmlspecialchars(t('nav.toggle', $language), ENT_QUOTES) ?>" aria-expanded="false" aria-controls="site-nav">
             <span></span>
@@ -137,61 +137,98 @@ if (isset($segments[1])) {
                     <?= htmlspecialchars(t('nav.close', $language), ENT_QUOTES) ?>
                 </button>
             </div>
-            <?php foreach ($navItems as $item) : ?>
-                <a href="<?= htmlspecialchars($item['url'], ENT_QUOTES) ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES) ?></a>
-            <?php endforeach; ?>
+            <div class="nav-item has-dropdown">
+                <span><?= htmlspecialchars(t('nav.products', $language), ENT_QUOTES) ?></span>
+                <div class="dropdown">
+                    <?php foreach ($categoryLinks as $category) : ?>
+                        <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/products/<?= htmlspecialchars($category['slug'], ENT_QUOTES) ?>/">
+                            <?= htmlspecialchars($category['name'], ENT_QUOTES) ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/custom-production/">
+                <?= htmlspecialchars(t('nav.custom', $language), ENT_QUOTES) ?>
+            </a>
+            <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/quality/">
+                <?= htmlspecialchars(t('nav.quality', $language), ENT_QUOTES) ?>
+            </a>
+            <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/where-to-buy/">
+                <?= htmlspecialchars(t('nav.where', $language), ENT_QUOTES) ?>
+            </a>
+            <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/contacts/">
+                <?= htmlspecialchars(t('nav.contacts', $language), ENT_QUOTES) ?>
+            </a>
             <div class="nav-footer">
-                <div class="nav-contacts"><?= nl2br(htmlspecialchars($settings['footer_contacts'] ?? '', ENT_QUOTES)) ?></div>
                 <div class="nav-language">
-                    <a href="/ru/" <?= $language === 'ru' ? 'class="active"' : '' ?>>RU</a>
-                    <a href="/en/" <?= $language === 'en' ? 'class="active"' : '' ?>>EN</a>
+                    <a href="<?= htmlspecialchars($ruLink, ENT_QUOTES) ?>" <?= $language === 'ru' ? 'class="active"' : '' ?>><?= htmlspecialchars(t('lang.ru', $language), ENT_QUOTES) ?></a>
+                    <a href="<?= htmlspecialchars($enLink, ENT_QUOTES) ?>" <?= $language === 'en' ? 'class="active"' : '' ?>><?= htmlspecialchars(t('lang.en', $language), ENT_QUOTES) ?></a>
                 </div>
             </div>
         </nav>
         <div class="header-actions">
+            <?php if ($headerCta !== '[[nav.cta]]' && $headerCta !== '') : ?>
+                <a class="btn btn-ghost" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/custom-production/">
+                    <?= htmlspecialchars($headerCta, ENT_QUOTES) ?>
+                </a>
+            <?php endif; ?>
             <div class="language-switch">
-                <a href="/ru/" <?= $language === 'ru' ? 'class="active"' : '' ?>>RU</a>
-                <a href="/en/" <?= $language === 'en' ? 'class="active"' : '' ?>>EN</a>
+                <a href="<?= htmlspecialchars($ruLink, ENT_QUOTES) ?>" <?= $language === 'ru' ? 'class="active"' : '' ?>><?= htmlspecialchars(t('lang.ru', $language), ENT_QUOTES) ?></a>
+                <a href="<?= htmlspecialchars($enLink, ENT_QUOTES) ?>" <?= $language === 'en' ? 'class="active"' : '' ?>><?= htmlspecialchars(t('lang.en', $language), ENT_QUOTES) ?></a>
             </div>
         </div>
     </div>
 </header>
-<?php endif; ?>
-<main class="site-main<?= $useLayout ? '' : ' is-custom' ?>">
+<main class="site-main">
     <?php include $templatePath; ?>
 </main>
-<?php if ($useLayout) : ?>
 <footer class="site-footer">
     <div class="container">
         <div class="footer-grid">
             <div>
-                <div class="footer-title"><?= htmlspecialchars($settings['footer_title'] ?? '', ENT_QUOTES) ?></div>
-                <div class="footer-text"><?= nl2br(htmlspecialchars($settings['footer_text'] ?? '', ENT_QUOTES)) ?></div>
+                <div class="footer-title"><?= htmlspecialchars(t('footer.title', $language), ENT_QUOTES) ?></div>
+                <div class="footer-text"><?= htmlspecialchars(t('footer.text', $language), ENT_QUOTES) ?></div>
             </div>
             <div>
                 <div class="footer-title"><?= htmlspecialchars(t('footer.links', $language), ENT_QUOTES) ?></div>
                 <div class="footer-text">
-                    <?php foreach ($footerLinks as $item) : ?>
-                        <div><a href="<?= htmlspecialchars($item['url'], ENT_QUOTES) ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES) ?></a></div>
-                    <?php endforeach; ?>
+                    <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/products/">
+                        <?= htmlspecialchars(t('nav.products', $language), ENT_QUOTES) ?>
+                    </a>
+                    <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/custom-production/">
+                        <?= htmlspecialchars(t('nav.custom', $language), ENT_QUOTES) ?>
+                    </a>
+                    <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/quality/">
+                        <?= htmlspecialchars(t('nav.quality', $language), ENT_QUOTES) ?>
+                    </a>
+                    <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/where-to-buy/">
+                        <?= htmlspecialchars(t('nav.where', $language), ENT_QUOTES) ?>
+                    </a>
+                    <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/contacts/">
+                        <?= htmlspecialchars(t('nav.contacts', $language), ENT_QUOTES) ?>
+                    </a>
                 </div>
             </div>
             <div>
-                <div class="footer-title"><?= htmlspecialchars($settings['footer_contacts_title'] ?? '', ENT_QUOTES) ?></div>
-                <div class="footer-text"><?= nl2br(htmlspecialchars($settings['footer_contacts'] ?? '', ENT_QUOTES)) ?></div>
+                <div class="footer-title"><?= htmlspecialchars(t('footer.contacts', $language), ENT_QUOTES) ?></div>
+                <div class="footer-text"><?= nl2br(htmlspecialchars(t('footer.contacts_text', $language), ENT_QUOTES)) ?></div>
+                <div class="footer-social">
+                    <a href="<?= htmlspecialchars(t('footer.telegram_link', $language), ENT_QUOTES) ?>" target="_blank" rel="noopener noreferrer">
+                        <?= htmlspecialchars(t('footer.telegram_label', $language), ENT_QUOTES) ?>
+                    </a>
+                </div>
             </div>
         </div>
-        <div class="footer-meta"><?= htmlspecialchars($settings['footer_copyright'] ?? '© System Power', ENT_QUOTES) ?></div>
+        <div class="footer-meta"><?= htmlspecialchars(t('footer.copyright', $language), ENT_QUOTES) ?></div>
     </div>
 </footer>
-<?php endif; ?>
 <script type="application/ld+json">
 <?= json_encode([
     '@context' => 'https://schema.org',
     '@type' => 'Organization',
-    'name' => $settings['brand_name'] ?? '',
+    'name' => $brandName,
     'url' => $baseUrl,
-    'description' => $settings['brand_description'] ?? '',
+    'description' => $brandDescription,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?>
 </script>
 <script type="application/ld+json">
@@ -234,20 +271,6 @@ if (isset($segments[1])) {
             closeNav();
         }
     });
-    let touchStartX = 0;
-    nav?.addEventListener('touchstart', (event) => {
-        if (event.touches.length) {
-            touchStartX = event.touches[0].clientX;
-        }
-    });
-    nav?.addEventListener('touchend', (event) => {
-        if (event.changedTouches.length) {
-            const deltaX = touchStartX - event.changedTouches[0].clientX;
-            if (deltaX > 80) {
-                closeNav();
-            }
-        }
-    });
     const onScroll = () => {
         if (window.scrollY > 12) {
             header?.classList.add('is-compact');
@@ -259,6 +282,35 @@ if (isset($segments[1])) {
     };
     window.addEventListener('scroll', onScroll);
     onScroll();
+
+    const heroVideo = document.querySelector('[data-hero-video]');
+    const playButton = document.querySelector('[data-hero-play]');
+    const shouldDefer = navigator.connection && (navigator.connection.saveData || /2g/.test(navigator.connection.effectiveType || ''));
+    const loadVideo = () => {
+        if (!heroVideo || heroVideo.dataset.loaded === '1') {
+            return;
+        }
+        const src = heroVideo.getAttribute('data-src');
+        if (src) {
+            heroVideo.src = src;
+            heroVideo.load();
+            heroVideo.dataset.loaded = '1';
+            heroVideo.play().catch(() => null);
+        }
+    };
+    if (!shouldDefer) {
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(loadVideo, { timeout: 2000 });
+        } else {
+            setTimeout(loadVideo, 1200);
+        }
+    } else if (playButton) {
+        playButton.classList.add('is-visible');
+    }
+    playButton?.addEventListener('click', () => {
+        loadVideo();
+        playButton.classList.remove('is-visible');
+    });
 </script>
 </body>
 </html>

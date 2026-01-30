@@ -9,7 +9,7 @@
     <table class="table">
         <thead>
         <tr>
-            <th><?= htmlspecialchars(t('admin.category_slug', 'ru'), ENT_QUOTES) ?></th>
+            <th><?= htmlspecialchars(t('admin.category_code', 'ru'), ENT_QUOTES) ?></th>
             <th><?= htmlspecialchars(t('admin.status', 'ru'), ENT_QUOTES) ?></th>
             <th><?= htmlspecialchars(t('admin.language_ru', 'ru'), ENT_QUOTES) ?></th>
             <th><?= htmlspecialchars(t('admin.language_en', 'ru'), ENT_QUOTES) ?></th>
@@ -19,14 +19,12 @@
         <tbody>
         <?php foreach ($categories as $category) : ?>
             <tr>
-                <td><?= htmlspecialchars($category['slug'], ENT_QUOTES) ?></td>
-                <td><?= htmlspecialchars($category['status'], ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars($category['code'], ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars($category['is_active'] ? 'active' : 'inactive', ENT_QUOTES) ?></td>
                 <td><?= htmlspecialchars($category['name_ru'] ?? '', ENT_QUOTES) ?></td>
                 <td><?= htmlspecialchars($category['name_en'] ?? '', ENT_QUOTES) ?></td>
                 <td class="table-actions">
-                    <a href="/admin/categories/edit?id=<?= htmlspecialchars($category['id'], ENT_QUOTES) ?>">
-                        <?= htmlspecialchars(t('admin.edit', 'ru'), ENT_QUOTES) ?>
-                    </a>
+                    <a href="/admin/categories/edit?id=<?= htmlspecialchars($category['id'], ENT_QUOTES) ?>"><?= htmlspecialchars(t('admin.edit', 'ru'), ENT_QUOTES) ?></a>
                     ·
                     <form class="inline-form" method="post" action="/admin/categories/delete" onsubmit="return confirm('Удалить категорию?');">
                         <?= csrf_field() ?>
