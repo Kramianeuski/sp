@@ -27,15 +27,32 @@ function config(string $key, mixed $default = null): mixed
 
 function t(string $key, string $language): string
 {
+    $entry = i18n_entry($key, $language);
+
+    return $entry['value'] ?? '[[' . $key . ']]';
+}
+
+function t_html(string $key, string $language): string
+{
+    $entry = i18n_entry($key, $language);
+
+    return $entry['value'] ?? '';
+}
+
+function i18n_entry(string $key, string $language): ?array
+{
     static $cache = [];
     static $missing = [];
 
     if (!isset($cache[$language])) {
-        $stmt = db()->prepare('SELECT `key`, `value` FROM translations WHERE language = ?');
+        $stmt = db()->prepare('SELECT `key`, `value`, is_html FROM i18n_strings WHERE locale = ?');
         $stmt->execute([$language]);
         $cache[$language] = [];
         foreach ($stmt->fetchAll() as $row) {
-            $cache[$language][$row['key']] = $row['value'];
+            $cache[$language][$row['key']] = [
+                'value' => $row['value'],
+                'is_html' => (int) $row['is_html'],
+            ];
         }
     }
 
@@ -59,7 +76,7 @@ function t(string $key, string $language): string
         file_put_contents($logDir . '/missing_translations.log', json_encode($payload, JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND);
     }
 
-    return '[[' . $key . ']]';
+    return null;
 }
 
 function render(string $template, array $data = []): void
@@ -157,10 +174,10 @@ function admin_log_attempt(string $email, bool $success): void
 function partners_list(string $language, ?string $type = null, bool $onlyActive = true): array
 {
     $query = '
-        SELECT p.id, p.type, p.url, p.logo_path, p.city, p.lat, p.lng, p.sort_order,
-               pt.name, pt.description
+        SELECT p.id, p.type, p.name, p.url, p.city, p.sort_order,
+               pi.description
         FROM partners p
-        JOIN partner_translations pt ON pt.partner_id = p.id AND pt.language = ?
+        JOIN partner_i18n pi ON pi.partner_id = p.id AND pi.locale = ?
     ';
     $params = [$language];
     $conditions = [];
@@ -185,52 +202,37 @@ function partners_list(string $language, ?string $type = null, bool $onlyActive 
     return $stmt->fetchAll();
 }
 
-function product_partners(int $productId, string $language): array
+function media_by_id(?int $mediaId): ?array
 {
-    $stmt = db()->prepare(
-        'SELECT p.id, p.type, p.url, p.logo_path, p.city, p.lat, p.lng,
-                pt.name, pt.description, pp.sort_order
-         FROM product_partners pp
-         JOIN partners p ON p.id = pp.partner_id
-         JOIN partner_translations pt ON pt.partner_id = p.id AND pt.language = ?
-         WHERE pp.product_id = ?
-           AND p.is_active = 1
-         ORDER BY pp.sort_order, p.sort_order, p.id'
-    );
-    $stmt->execute([$language, $productId]);
-
-    return $stmt->fetchAll();
-}
-
-function documents_list(string $scope, string $language, ?int $productId = null): array
-{
-    if ($scope === 'product' && $productId !== null) {
-        $stmt = db()->prepare(
-            'SELECT d.id, d.title, d.file_path, d.doc_type
-             FROM document_products dp
-             JOIN documents d ON d.id = dp.document_id
-             WHERE dp.product_id = ?
-               AND d.scope = ?
-               AND d.language = ?
-               AND d.is_active = 1
-             ORDER BY dp.sort_order, d.sort_order, d.id'
-        );
-        $stmt->execute([$productId, $scope, $language]);
-
-        return $stmt->fetchAll();
+    if (!$mediaId) {
+        return null;
     }
 
-    $stmt = db()->prepare(
-        'SELECT id, title, file_path, doc_type
-         FROM documents
-         WHERE scope = ?
-           AND language = ?
-           AND is_active = 1
-         ORDER BY sort_order, id'
-    );
-    $stmt->execute([$scope, $language]);
+    $stmt = db()->prepare('SELECT * FROM media WHERE id = ?');
+    $stmt->execute([$mediaId]);
 
-    return $stmt->fetchAll();
+    $media = $stmt->fetch();
+
+    return $media ?: null;
+}
+
+function media_path(?int $mediaId): ?string
+{
+    $media = media_by_id($mediaId);
+
+    return $media['path'] ?? null;
+}
+
+function localized_url(string $url, string $language): string
+{
+    if (str_starts_with($url, '/ru/') || $url === '/ru/') {
+        return preg_replace('#^/ru#', '/' . $language, $url);
+    }
+    if (str_starts_with($url, '/en/') || $url === '/en/') {
+        return preg_replace('#^/en#', '/' . $language, $url);
+    }
+
+    return $url;
 }
 
 function cache_get(string $key): ?string

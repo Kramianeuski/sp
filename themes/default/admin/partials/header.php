@@ -17,12 +17,8 @@
             <a href="/admin/products"><?= htmlspecialchars(t('admin.nav_products', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/products/import"><?= htmlspecialchars(t('admin.nav_import', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/partners"><?= htmlspecialchars(t('admin.nav_partners', 'ru'), ENT_QUOTES) ?></a>
-            <a href="/admin/documents"><?= htmlspecialchars(t('admin.nav_documents', 'ru'), ENT_QUOTES) ?></a>
-            <a href="/admin/home-hero"><?= htmlspecialchars(t('admin.nav_home_hero', 'ru'), ENT_QUOTES) ?></a>
-            <a href="/admin/header"><?= htmlspecialchars(t('admin.nav_header', 'ru'), ENT_QUOTES) ?></a>
-            <a href="/admin/footer"><?= htmlspecialchars(t('admin.nav_footer', 'ru'), ENT_QUOTES) ?></a>
+            <a href="/admin/leads"><?= htmlspecialchars(t('admin.nav_leads', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/translations"><?= htmlspecialchars(t('admin.nav_translations', 'ru'), ENT_QUOTES) ?></a>
-            <a href="/admin/files"><?= htmlspecialchars(t('admin.nav_files', 'ru'), ENT_QUOTES) ?></a>
         </nav>
         <form method="post" action="/admin/logout" class="logout-form">
             <?= csrf_field() ?>

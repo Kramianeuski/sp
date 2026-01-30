@@ -28,12 +28,8 @@
                         <?= htmlspecialchars(t('admin.edit', 'ru'), ENT_QUOTES) ?>
                     </a>
                     ·
-                    <a href="/admin/blocks?page_id=<?= htmlspecialchars($page['id'], ENT_QUOTES) ?>&lang=ru">
-                        <?= htmlspecialchars(t('admin.blocks_ru', 'ru'), ENT_QUOTES) ?>
-                    </a>
-                    ·
-                    <a href="/admin/blocks?page_id=<?= htmlspecialchars($page['id'], ENT_QUOTES) ?>&lang=en">
-                        <?= htmlspecialchars(t('admin.blocks_en', 'ru'), ENT_QUOTES) ?>
+                    <a href="/admin/blocks?page_id=<?= htmlspecialchars($page['id'], ENT_QUOTES) ?>">
+                        <?= htmlspecialchars(t('admin.sections', 'ru'), ENT_QUOTES) ?>
                     </a>
                     ·
                     <form class="inline-form" method="post" action="/admin/pages/delete" onsubmit="return confirm('Удалить страницу?');">
