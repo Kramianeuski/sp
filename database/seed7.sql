@@ -134,9 +134,10 @@ INSERT INTO page_blocks (page_id, language, block_key, title, body, sort_order) 
 -- Documentation page blocks
 SET @docs_id = (SELECT id FROM pages WHERE slug = 'documentation' LIMIT 1);
 DELETE FROM page_blocks WHERE page_id = @docs_id;
+
 INSERT INTO page_blocks (page_id, language, block_key, title, body, sort_order) VALUES
-(@docs_id,'ru','documentation','Документация','Общие документы бренда и документы по изделиям собраны в одном разделе.'),
-(@docs_id,'en','documentation','Documentation','Brand documents and product documentation are collected here.');
+(@docs_id,'ru','documentation','Документация','Общие документы бренда и документы по изделиям собраны в одном разделе.',1),
+(@docs_id,'en','documentation','Documentation','Brand documents and product documentation are collected here.',1);
 
 -- Where to buy page blocks
 SET @where_id = (SELECT id FROM pages WHERE slug = 'where-to-buy' LIMIT 1);
