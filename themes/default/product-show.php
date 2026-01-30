@@ -13,14 +13,28 @@
         <p><?= htmlspecialchars($product['short_description'], ENT_QUOTES) ?></p>
     </div>
 </section>
+<?php $hasMultipleImages = count($images) > 1; ?>
 <section class="section">
     <div class="container">
         <div class="product-layout">
-            <div class="product-gallery">
+            <div class="product-gallery" data-product-gallery>
                 <?php if (!empty($images)) : ?>
-                    <?php foreach ($images as $image) : ?>
-                        <img src="<?= htmlspecialchars($image['path'], ENT_QUOTES) ?>" alt="<?= htmlspecialchars($image['alt_key'] ? t($image['alt_key'], $language) : $product['name'], ENT_QUOTES) ?>">
-                    <?php endforeach; ?>
+                    <div class="product-gallery-track" data-gallery-track>
+                        <?php foreach ($images as $index => $image) : ?>
+                            <div class="product-gallery-slide" data-gallery-slide>
+                                <img
+                                    src="<?= htmlspecialchars($image['path'], ENT_QUOTES) ?>"
+                                    alt="<?= htmlspecialchars($image['alt_key'] ? t($image['alt_key'], $language) : $product['name'], ENT_QUOTES) ?>"
+                                    loading="<?= $index === 0 ? 'eager' : 'lazy' ?>"
+                                    <?= $index === 0 ? 'fetchpriority="high"' : '' ?>
+                                >
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php if ($hasMultipleImages) : ?>
+                        <button class="gallery-nav gallery-prev" type="button" data-gallery-prev aria-label="<?= htmlspecialchars(t('gallery.prev', $language), ENT_QUOTES) ?>">←</button>
+                        <button class="gallery-nav gallery-next" type="button" data-gallery-next aria-label="<?= htmlspecialchars(t('gallery.next', $language), ENT_QUOTES) ?>">→</button>
+                    <?php endif; ?>
                 <?php else : ?>
                     <div class="product-placeholder"></div>
                 <?php endif; ?>
