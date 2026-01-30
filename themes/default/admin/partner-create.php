@@ -5,7 +5,7 @@
         <a class="btn btn-secondary" href="/admin/partners"><?= htmlspecialchars(t('admin.back', 'ru'), ENT_QUOTES) ?></a>
     </div>
 </div>
-<form method="post" class="card form-card">
+<form method="post" class="card form-card" enctype="multipart/form-data">
     <?= csrf_field() ?>
     <div class="field">
         <label><?= htmlspecialchars(t('admin.partner_type', 'ru'), ENT_QUOTES) ?></label>
@@ -25,6 +25,10 @@
     <div class="field">
         <label><?= htmlspecialchars(t('admin.partner_url', 'ru'), ENT_QUOTES) ?></label>
         <input type="text" name="url" value="<?= htmlspecialchars($partner['url'], ENT_QUOTES) ?>">
+    </div>
+    <div class="field">
+        <label><?= htmlspecialchars(t('admin.partner_logo', 'ru'), ENT_QUOTES) ?></label>
+        <input type="file" name="logo" accept="image/*">
     </div>
     <div class="field">
         <label><?= htmlspecialchars(t('admin.sort_order', 'ru'), ENT_QUOTES) ?></label>

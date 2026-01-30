@@ -12,8 +12,16 @@ $heroAutoplay = !empty($settings['hero_video_autoplay']);
 <section class="hero">
     <div class="hero-media">
         <?php if (!empty($heroVideo)) : ?>
-            <video class="hero-video" <?= $heroAutoplay ? 'autoplay muted loop playsinline' : 'controls' ?> <?= !empty($heroPoster) ? 'poster="' . htmlspecialchars($heroPoster, ENT_QUOTES) . '"' : '' ?>>
-                <source src="<?= htmlspecialchars($heroVideo, ENT_QUOTES) ?>">
+            <video
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                class="hero-video"
+                <?= !empty($heroPoster) ? 'poster="' . htmlspecialchars($heroPoster, ENT_QUOTES) . '"' : '' ?>
+            >
+                <source src="<?= htmlspecialchars($heroVideo, ENT_QUOTES) ?>" type="video/mp4">
             </video>
         <?php endif; ?>
         <div class="hero-overlay"></div>

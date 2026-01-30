@@ -398,6 +398,10 @@ if ($path === '/admin/categories/create') {
         }
 
         if (empty($errors)) {
+            foreach (['ru', 'en'] as $locale) {
+                $baseSlug = slugify($translations[$locale]['name']);
+                $seo[$locale]['slug'] = unique_product_slug($baseSlug, $locale);
+            }
             $pdo = db();
             $pdo->beginTransaction();
             $stmt = $pdo->prepare('INSERT INTO categories (code, is_active, created_at, updated_at) VALUES (?, ?, NOW(), NOW())');
@@ -602,6 +606,10 @@ if ($path === '/admin/products/edit' && isset($_GET['id'])) {
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        foreach (['ru', 'en'] as $locale) {
+            $baseSlug = slugify(trim($_POST['name_' . $locale] ?? ''));
+            $seo[$locale]['slug'] = unique_product_slug($baseSlug, $locale, $productId);
+        }
         $update = db()->prepare('UPDATE products SET category_id = ?, sku = ?, is_active = ?, sort_order = ?, updated_at = NOW() WHERE id = ?');
         $update->execute([
             (int) ($_POST['category_id'] ?? $product['category_id']),
@@ -625,7 +633,7 @@ if ($path === '/admin/products/edit' && isset($_GET['id'])) {
                 trim($_POST['meta_title_' . $locale] ?? ''),
                 trim($_POST['meta_description_' . $locale] ?? ''),
                 trim($_POST['h1_' . $locale] ?? ''),
-                trim($_POST['slug_' . $locale] ?? ''),
+                $seo[$locale]['slug'],
                 $productId,
                 $locale,
             ]);
@@ -718,6 +726,7 @@ if ($path === '/admin/partners/create') {
         'url' => trim($_POST['url'] ?? ''),
         'sort_order' => (int) ($_POST['sort_order'] ?? 0),
         'is_active' => isset($_POST['is_active']) ? 1 : 0,
+        'logo_media_id' => null,
     ];
     $translations = [
         'ru' => trim($_POST['description_ru'] ?? ''),
@@ -725,9 +734,10 @@ if ($path === '/admin/partners/create') {
     ];
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $logoMediaId = store_uploaded_media($_FILES['logo'] ?? [], 'partners');
         $pdo = db();
         $pdo->beginTransaction();
-        $stmt = $pdo->prepare('INSERT INTO partners (type, name, city, url, sort_order, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())');
+        $stmt = $pdo->prepare('INSERT INTO partners (type, name, city, url, sort_order, is_active, logo_media_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
         $stmt->execute([
             $partner['type'],
             $partner['name'],
@@ -735,6 +745,7 @@ if ($path === '/admin/partners/create') {
             $partner['url'],
             $partner['sort_order'],
             $partner['is_active'],
+            $logoMediaId,
         ]);
         $partnerId = (int) $pdo->lastInsertId();
         $insertTranslation = $pdo->prepare('INSERT INTO partner_i18n (partner_id, locale, description, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())');
@@ -768,7 +779,8 @@ if ($path === '/admin/partners/edit' && isset($_GET['id'])) {
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $update = db()->prepare('UPDATE partners SET type = ?, name = ?, city = ?, url = ?, sort_order = ?, is_active = ?, updated_at = NOW() WHERE id = ?');
+        $logoMediaId = store_uploaded_media($_FILES['logo'] ?? [], 'partners');
+        $update = db()->prepare('UPDATE partners SET type = ?, name = ?, city = ?, url = ?, sort_order = ?, is_active = ?, logo_media_id = ?, updated_at = NOW() WHERE id = ?');
         $update->execute([
             $_POST['type'] ?? $partner['type'],
             trim($_POST['name'] ?? ''),
@@ -776,6 +788,7 @@ if ($path === '/admin/partners/edit' && isset($_GET['id'])) {
             trim($_POST['url'] ?? ''),
             (int) ($_POST['sort_order'] ?? 0),
             isset($_POST['is_active']) ? 1 : 0,
+            $logoMediaId ?: $partner['logo_media_id'],
             $partnerId,
         ]);
         $updateTranslation = db()->prepare('UPDATE partner_i18n SET description = ?, updated_at = NOW() WHERE partner_id = ? AND locale = ?');
