@@ -36,30 +36,24 @@ if ($path === '/sitemap.xml') {
     $urls = [];
 
     foreach ($languages as $language) {
-
-        // Pages
         $stmt = db()->prepare(
-            'SELECT p.slug
+            'SELECT p.slug AS page_slug, sm.slug AS seo_slug
              FROM pages p
-             JOIN page_translations pt ON pt.page_id = p.id
-             WHERE pt.language = ?
-               AND pt.indexable = 1
-               AND p.status = "published"'
+             JOIN seo_meta sm ON sm.entity_type = "page" AND sm.entity_id = p.id AND sm.locale = ?
+             WHERE p.status = "published"'
         );
         $stmt->execute([$language]);
 
         foreach ($stmt->fetchAll() as $page) {
-            $urls[] = '/' . $language . '/' . ($page['slug'] === 'home' ? '' : $page['slug'] . '/');
+            $slug = $page['seo_slug'] ?: $page['page_slug'];
+            $urls[] = '/' . $language . '/' . ($slug === 'home' ? '' : $slug . '/');
         }
 
-        // Categories
         $stmt = db()->prepare(
-            'SELECT c.slug
+            'SELECT c.id, sm.slug
              FROM categories c
-             JOIN category_translations ct ON ct.category_id = c.id
-             WHERE ct.language = ?
-               AND ct.indexable = 1
-               AND c.status = "published"'
+             JOIN seo_meta sm ON sm.entity_type = "category" AND sm.entity_id = c.id AND sm.locale = ?
+             WHERE c.is_active = 1'
         );
         $stmt->execute([$language]);
 
@@ -67,19 +61,18 @@ if ($path === '/sitemap.xml') {
             $urls[] = '/' . $language . '/products/' . $category['slug'] . '/';
         }
 
-        // Products
         $stmt = db()->prepare(
-            'SELECT p.slug
+            'SELECT p.id, sm.slug AS product_slug, cm.slug AS category_slug
              FROM products p
-             JOIN product_translations pt ON pt.product_id = p.id
-             WHERE pt.language = ?
-               AND pt.indexable = 1
-               AND p.status = "published"'
+             JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ?
+             JOIN categories c ON c.id = p.category_id
+             JOIN seo_meta cm ON cm.entity_type = "category" AND cm.entity_id = c.id AND cm.locale = ?
+             WHERE p.is_active = 1'
         );
-        $stmt->execute([$language]);
+        $stmt->execute([$language, $language]);
 
         foreach ($stmt->fetchAll() as $product) {
-            $urls[] = '/' . $language . '/product/' . $product['slug'] . '/';
+            $urls[] = '/' . $language . '/products/' . $product['category_slug'] . '/' . $product['product_slug'] . '/';
         }
     }
 
@@ -101,8 +94,6 @@ if ($path === '/robots.txt') {
 
     echo "User-agent: *\n";
     echo "Disallow: /admin/\n";
-    echo "Disallow: /ru/products\n";
-    echo "Disallow: /en/products\n";
     echo "Sitemap: " . config('base_url') . "/sitemap.xml\n";
     exit;
 }
@@ -178,14 +169,113 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 }
 
+$route = $segments[1] ?? '';
+$param = $segments[2] ?? null;
+$subparam = $segments[3] ?? null;
+
 /*
 |--------------------------------------------------------------------------
-| Routing
+| Lead form handling
 |--------------------------------------------------------------------------
 */
 
-$route = $segments[1] ?? '';
-$param = $segments[2] ?? null;
+if ($route === 'custom-production' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $errors = [];
+    $fullName = trim($_POST['full_name'] ?? '');
+    $company = trim($_POST['company'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $telegram = trim($_POST['telegram'] ?? '');
+    $whatsapp = trim($_POST['whatsapp'] ?? '');
+    $preferredContact = $_POST['preferred_contact'] ?? '';
+    $message = trim($_POST['message'] ?? '');
+    $consent = isset($_POST['consent']) ? 1 : 0;
+    $honeypot = trim($_POST['website'] ?? '');
+    $captchaAnswer = trim($_POST['captcha_answer'] ?? '');
+    $captchaExpected = $_SESSION['captcha_answer'] ?? null;
+
+    if ($honeypot !== '') {
+        $errors['form'] = t('form.error.spam', $language);
+    }
+
+    if (!$consent) {
+        $errors['consent'] = t('form.error.consent', $language);
+    }
+
+    if ($fullName === '') {
+        $errors['full_name'] = t('form.error.full_name', $language);
+    }
+
+    $contactFields = [
+        'phone' => $phone,
+        'email' => $email,
+        'telegram' => $telegram,
+        'whatsapp' => $whatsapp,
+    ];
+    $hasContact = false;
+    foreach ($contactFields as $value) {
+        if ($value !== '') {
+            $hasContact = true;
+            break;
+        }
+    }
+    if (!$hasContact) {
+        $errors['contact'] = t('form.error.contact', $language);
+    }
+
+    if ($preferredContact === '' || !in_array($preferredContact, ['phone', 'email', 'telegram', 'whatsapp'], true)) {
+        $errors['preferred_contact'] = t('form.error.preferred', $language);
+    } elseif (($contactFields[$preferredContact] ?? '') === '') {
+        $errors['preferred_contact'] = t('form.error.preferred_match', $language);
+    }
+
+    if ($message === '') {
+        $errors['message'] = t('form.error.message', $language);
+    }
+
+    if ($captchaExpected === null || $captchaAnswer === '' || (int) $captchaAnswer !== (int) $captchaExpected) {
+        $errors['captcha'] = t('form.error.captcha', $language);
+    }
+
+    $lastLeadTime = $_SESSION['last_lead_time'] ?? 0;
+    if (time() - (int) $lastLeadTime < 20) {
+        $errors['form'] = t('form.error.rate_limit', $language);
+    }
+
+    if (empty($errors)) {
+        $stmt = db()->prepare(
+            'INSERT INTO leads (type, full_name, company, phone, email, telegram, whatsapp, preferred_contact, message, status, created_at)
+             VALUES ("custom_production", ?, ?, ?, ?, ?, ?, ?, ?, "new", NOW())'
+        );
+        $stmt->execute([
+            $fullName,
+            $company ?: null,
+            $phone ?: null,
+            $email ?: null,
+            $telegram ?: null,
+            $whatsapp ?: null,
+            $preferredContact,
+            $message,
+        ]);
+        $_SESSION['last_lead_time'] = time();
+        $_SESSION['lead_success'] = true;
+        redirect('/' . $language . '/custom-production/');
+    }
+
+    $_SESSION['lead_errors'] = $errors;
+    $_SESSION['lead_old'] = [
+        'full_name' => $fullName,
+        'company' => $company,
+        'phone' => $phone,
+        'email' => $email,
+        'telegram' => $telegram,
+        'whatsapp' => $whatsapp,
+        'preferred_contact' => $preferredContact,
+        'message' => $message,
+        'consent' => $consent,
+    ];
+    redirect('/' . $language . '/custom-production/');
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -194,22 +284,34 @@ $param = $segments[2] ?? null;
 */
 
 if ($route === 'products' && $param === null) {
-
     $stmt = db()->prepare(
-        'SELECT c.id, c.slug, ct.name, ct.description, ct.h1, ct.meta_title, ct.meta_description
+        'SELECT c.id, c.code, ci.name, ci.description, sm.slug
          FROM categories c
-         JOIN category_translations ct ON ct.category_id = c.id
-         WHERE ct.language = ?
-           AND c.status = "published"'
+         JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ?
+         JOIN seo_meta sm ON sm.entity_type = "category" AND sm.entity_id = c.id AND sm.locale = ?
+         WHERE c.is_active = 1
+         ORDER BY c.id'
     );
-    $stmt->execute([$language]);
+    $stmt->execute([$language, $language]);
+
+    $pageStmt = db()->prepare('SELECT id FROM pages WHERE slug = "products" LIMIT 1');
+    $pageStmt->execute();
+    $pageId = (int) $pageStmt->fetchColumn();
+    $seo = [];
+    if ($pageId) {
+        $seoStmt = db()->prepare('SELECT * FROM seo_meta WHERE entity_type = "page" AND entity_id = ? AND locale = ?');
+        $seoStmt->execute([$pageId, $language]);
+        $seo = $seoStmt->fetch() ?: [];
+    }
 
     $page = [
-        'title' => t('products.title', $language),
-        'h1' => t('products.h1', $language),
-        'meta_title' => t('products.meta_title', $language),
-        'meta_description' => t('products.meta_description', $language),
-        'language' => $language,
+        'title' => $seo['title'] ?? t('products.title', $language),
+        'h1' => $seo['h1'] ?? t('products.title', $language),
+        'meta_title' => $seo['title'] ?? t('products.title', $language),
+        'meta_description' => $seo['description'] ?? t('products.text', $language),
+        'canonical' => $seo['canonical'] ?? (config('base_url') . '/' . $language . '/products/'),
+        'og_title' => $seo['og_title'] ?? ($seo['title'] ?? ''),
+        'og_description' => $seo['og_description'] ?? ($seo['description'] ?? ''),
         'slug' => 'products',
     ];
 
@@ -232,18 +334,16 @@ if ($route === 'products' && $param === null) {
 |--------------------------------------------------------------------------
 */
 
-if ($route === 'products' && $param !== null) {
-
+if ($route === 'products' && $param !== null && $subparam === null) {
     $stmt = db()->prepare(
-        'SELECT c.id, c.slug, ct.*
+        'SELECT c.id, c.code, ci.name, ci.description, sm.title, sm.description AS meta_description, sm.h1, sm.slug
          FROM categories c
-         JOIN category_translations ct ON ct.category_id = c.id
-         WHERE c.slug = ?
-           AND ct.language = ?
-           AND c.status = "published"'
+         JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ?
+         JOIN seo_meta sm ON sm.entity_type = "category" AND sm.entity_id = c.id AND sm.locale = ?
+         WHERE sm.slug = ?
+           AND c.is_active = 1'
     );
-    $stmt->execute([$param, $language]);
-
+    $stmt->execute([$language, $language, $param]);
     $category = $stmt->fetch();
 
     if (!$category) {
@@ -256,18 +356,18 @@ if ($route === 'products' && $param !== null) {
     $sort = $_GET['sort'] ?? 'name';
 
     $query = '
-        SELECT p.id, p.slug, p.sku, pt.name, pt.short_description
+        SELECT p.id, p.sku, pi.name, pi.short_description, sm.slug
         FROM products p
-        JOIN product_translations pt ON pt.product_id = p.id
+        JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = ?
+        JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ?
         WHERE p.category_id = ?
-          AND pt.language = ?
-          AND p.status = "published"
+          AND p.is_active = 1
     ';
 
-    $params = [$category['id'], $language];
+    $params = [$language, $language, $category['id']];
 
     if ($search !== '') {
-        $query .= ' AND (pt.name LIKE ? OR p.sku LIKE ?)';
+        $query .= ' AND (pi.name LIKE ? OR p.sku LIKE ?)';
         $like = '%' . $search . '%';
         $params[] = $like;
         $params[] = $like;
@@ -275,7 +375,7 @@ if ($route === 'products' && $param !== null) {
 
     $query .= $sort === 'new'
         ? ' ORDER BY p.id DESC'
-        : ' ORDER BY pt.name';
+        : ' ORDER BY pi.name';
 
     $stmt = db()->prepare($query);
     $stmt->execute($params);
@@ -286,24 +386,34 @@ if ($route === 'products' && $param !== null) {
     if ($productIds) {
         $placeholders = implode(',', array_fill(0, count($productIds), '?'));
         $specStmt = db()->prepare(
-            "SELECT product_id, label, value, unit
-             FROM product_specs
-             WHERE language = ?
-               AND product_id IN ($placeholders)
-             ORDER BY sort_order"
+            "SELECT ps.product_id, psi.name, psi.value
+             FROM product_specs ps
+             JOIN product_specs_i18n psi ON psi.product_spec_id = ps.id AND psi.locale = ?
+             WHERE ps.product_id IN ($placeholders)
+             ORDER BY ps.sort_order"
         );
         $specStmt->execute(array_merge([$language], $productIds));
         foreach ($specStmt->fetchAll() as $spec) {
             if (count($productFacts[$spec['product_id']] ?? []) >= 6) {
                 continue;
             }
-            $productFacts[$spec['product_id']][] = trim($spec['label'] . ': ' . trim($spec['value'] . ' ' . $spec['unit']));
+            $productFacts[$spec['product_id']][] = trim($spec['name'] . ': ' . $spec['value']);
         }
     }
 
     ob_start();
     render('category-show', [
         'language' => $language,
+        'page' => [
+            'title' => $category['title'] ?? $category['name'],
+            'h1' => $category['h1'] ?? $category['name'],
+            'meta_title' => $category['title'] ?? $category['name'],
+            'meta_description' => $category['meta_description'] ?? $category['description'],
+            'canonical' => config('base_url') . '/' . $language . '/products/' . $category['slug'] . '/',
+            'og_title' => $category['title'] ?? $category['name'],
+            'og_description' => $category['meta_description'] ?? $category['description'],
+            'slug' => $category['slug'],
+        ],
         'category' => $category,
         'products' => $products,
         'productFacts' => $productFacts,
@@ -323,17 +433,34 @@ if ($route === 'products' && $param !== null) {
 |--------------------------------------------------------------------------
 */
 
-if ($route === 'product' && $param !== null) {
+if ($route === 'products' && $param !== null && $subparam !== null) {
+    $categoryStmt = db()->prepare(
+        'SELECT c.id, c.code, ci.name, sm.slug
+         FROM categories c
+         JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ?
+         JOIN seo_meta sm ON sm.entity_type = "category" AND sm.entity_id = c.id AND sm.locale = ?
+         WHERE sm.slug = ?
+           AND c.is_active = 1'
+    );
+    $categoryStmt->execute([$language, $language, $param]);
+    $category = $categoryStmt->fetch();
+
+    if (!$category) {
+        http_response_code(404);
+        render('404', ['language' => $language]);
+        exit;
+    }
 
     $stmt = db()->prepare(
-        'SELECT p.id, p.slug, p.sku, pt.*
+        'SELECT p.id, p.sku, pi.name, pi.short_description, pi.description, pi.is_html, sm.title, sm.description AS meta_description, sm.h1, sm.slug
          FROM products p
-         JOIN product_translations pt ON pt.product_id = p.id
-         WHERE p.slug = ?
-           AND pt.language = ?
-           AND p.status = "published"'
+         JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = ?
+         JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ?
+         WHERE sm.slug = ?
+           AND p.category_id = ?
+           AND p.is_active = 1'
     );
-    $stmt->execute([$param, $language]);
+    $stmt->execute([$language, $language, $subparam, $category['id']]);
 
     $product = $stmt->fetch();
 
@@ -344,65 +471,40 @@ if ($route === 'product' && $param !== null) {
     }
 
     $images = db()->prepare(
-        'SELECT file_path, alt_text
-         FROM product_images
-         WHERE product_id = ? AND language = ?
-         ORDER BY sort_order'
+        'SELECT m.path, m.alt_key
+         FROM product_media pm
+         JOIN media m ON m.id = pm.media_id
+         WHERE pm.product_id = ?
+         ORDER BY pm.sort_order'
     );
-    $images->execute([$product['id'], $language]);
-
-    $documents = db()->prepare(
-        'SELECT d.title, d.file_path
-         FROM document_products dp
-         JOIN documents d ON d.id = dp.document_id
-         WHERE dp.product_id = ?
-           AND d.scope = "product"
-           AND d.language = ?
-           AND d.is_active = 1
-         ORDER BY dp.sort_order, d.sort_order'
-    );
-    $documents->execute([$product['id'], $language]);
-
-    $faqs = db()->prepare(
-        'SELECT question, answer
-         FROM product_faqs
-         WHERE product_id = ? AND language = ?
-         ORDER BY sort_order'
-    );
-    $faqs->execute([$product['id'], $language]);
+    $images->execute([$product['id']]);
 
     $specs = db()->prepare(
-        'SELECT label, value, unit, type
-         FROM product_specs
-         WHERE product_id = ? AND language = ?
-         ORDER BY sort_order'
+        'SELECT psi.name, psi.value
+         FROM product_specs ps
+         JOIN product_specs_i18n psi ON psi.product_spec_id = ps.id AND psi.locale = ?
+         WHERE ps.product_id = ?
+         ORDER BY ps.sort_order'
     );
-    $specs->execute([$product['id'], $language]);
-
-    $related = db()->prepare(
-        'SELECT p.slug, pt.name
-         FROM products p
-         JOIN product_translations pt ON pt.product_id = p.id
-         WHERE p.category_id = (
-             SELECT category_id FROM products WHERE id = ?
-         )
-           AND pt.language = ?
-           AND p.id != ?'
-    );
-    $related->execute([$product['id'], $language, $product['id']]);
-
-    $partners = product_partners((int) $product['id'], $language);
+    $specs->execute([$language, $product['id']]);
 
     ob_start();
     render('product-show', [
         'language' => $language,
+        'page' => [
+            'title' => $product['title'] ?? $product['name'],
+            'h1' => $product['h1'] ?? $product['name'],
+            'meta_title' => $product['title'] ?? $product['name'],
+            'meta_description' => $product['meta_description'] ?? $product['short_description'],
+            'canonical' => config('base_url') . '/' . $language . '/products/' . $category['slug'] . '/' . $product['slug'] . '/',
+            'og_title' => $product['title'] ?? $product['name'],
+            'og_description' => $product['meta_description'] ?? $product['short_description'],
+            'slug' => $product['slug'],
+        ],
+        'category' => $category,
         'product' => $product,
         'images' => $images->fetchAll(),
-        'documents' => $documents->fetchAll(),
-        'faqs' => $faqs->fetchAll(),
         'specs' => $specs->fetchAll(),
-        'related' => $related->fetchAll(),
-        'productPartners' => $partners,
     ]);
     $content = ob_get_clean();
 
@@ -420,14 +522,12 @@ if ($route === 'product' && $param !== null) {
 $slug = $route !== '' ? $route : 'home';
 
 $stmt = db()->prepare(
-    'SELECT p.id, p.slug, pt.*
+    'SELECT p.id, p.slug, p.status
      FROM pages p
-     JOIN page_translations pt ON pt.page_id = p.id
      WHERE p.slug = ?
-       AND pt.language = ?
        AND p.status = "published"'
 );
-$stmt->execute([$slug, $language]);
+$stmt->execute([$slug]);
 
 $page = $stmt->fetch();
 
@@ -437,20 +537,48 @@ if (!$page) {
     exit;
 }
 
-$blocks = db()->prepare(
-    'SELECT block_key, title, body
-     FROM page_blocks
+$seoStmt = db()->prepare('SELECT * FROM seo_meta WHERE entity_type = "page" AND entity_id = ? AND locale = ?');
+$seoStmt->execute([$page['id'], $language]);
+$seo = $seoStmt->fetch() ?: [];
+
+$pageData = [
+    'id' => $page['id'],
+    'slug' => $page['slug'],
+    'title' => $seo['title'] ?? '',
+    'h1' => $seo['h1'] ?? '',
+    'meta_title' => $seo['title'] ?? '',
+    'meta_description' => $seo['description'] ?? '',
+    'canonical' => $seo['canonical'] ?? '',
+    'og_title' => $seo['og_title'] ?? $seo['title'] ?? '',
+    'og_description' => $seo['og_description'] ?? $seo['description'] ?? '',
+    'og_image_id' => $seo['og_image_id'] ?? null,
+];
+
+$sectionsStmt = db()->prepare(
+    'SELECT section_key, template, data_json
+     FROM page_sections
      WHERE page_id = ?
-       AND language = ?
      ORDER BY sort_order'
 );
-$blocks->execute([$page['id'], $language]);
+$sectionsStmt->execute([$page['id']]);
+
+$sections = $sectionsStmt->fetchAll();
+
+if ($page['slug'] === 'custom-production') {
+    $a = random_int(2, 9);
+    $b = random_int(2, 9);
+    $_SESSION['captcha_answer'] = $a + $b;
+    $captchaPrompt = $a . ' + ' . $b;
+} else {
+    $captchaPrompt = null;
+}
 
 ob_start();
 render('page', [
     'language' => $language,
-    'page' => $page,
-    'blocks' => $blocks->fetchAll(),
+    'page' => $pageData,
+    'sections' => $sections,
+    'captchaPrompt' => $captchaPrompt,
 ]);
 $content = ob_get_clean();
 

@@ -5,34 +5,31 @@
         <a class="btn btn-primary" href="/admin/partners/create"><?= htmlspecialchars(t('admin.add', 'ru'), ENT_QUOTES) ?></a>
     </div>
 </div>
-<div class="card">
+<div class="card table-card">
     <table class="table">
         <thead>
         <tr>
             <th><?= htmlspecialchars(t('admin.partner_name', 'ru'), ENT_QUOTES) ?></th>
             <th><?= htmlspecialchars(t('admin.partner_type', 'ru'), ENT_QUOTES) ?></th>
-            <th><?= htmlspecialchars(t('admin.partner_city', 'ru'), ENT_QUOTES) ?></th>
-            <th><?= htmlspecialchars(t('admin.status', 'ru'), ENT_QUOTES) ?></th>
+            <th><?= htmlspecialchars(t('admin.partner_url', 'ru'), ENT_QUOTES) ?></th>
             <th><?= htmlspecialchars(t('admin.sort_order', 'ru'), ENT_QUOTES) ?></th>
-            <th></th>
+            <th class="table-actions"></th>
         </tr>
         </thead>
         <tbody>
         <?php foreach ($partners as $partner) : ?>
             <tr>
                 <td><?= htmlspecialchars($partner['name'], ENT_QUOTES) ?></td>
-                <td><?= htmlspecialchars(t('partner.type.' . $partner['type'], 'ru'), ENT_QUOTES) ?></td>
-                <td><?= htmlspecialchars($partner['city'], ENT_QUOTES) ?></td>
-                <td><?= !empty($partner['is_active']) ? htmlspecialchars(t('admin.status_published', 'ru'), ENT_QUOTES) : htmlspecialchars(t('admin.status_archived', 'ru'), ENT_QUOTES) ?></td>
-                <td><?= htmlspecialchars($partner['sort_order'], ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars($partner['type'], ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars($partner['url'], ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars((string) $partner['sort_order'], ENT_QUOTES) ?></td>
                 <td class="table-actions">
-                    <a class="btn btn-secondary" href="/admin/partners/edit?id=<?= htmlspecialchars($partner['id'], ENT_QUOTES) ?>">
-                        <?= htmlspecialchars(t('admin.edit', 'ru'), ENT_QUOTES) ?>
-                    </a>
-                    <form method="post" action="/admin/partners/delete" onsubmit="return confirm('Удалить партнёра?')">
+                    <a href="/admin/partners/edit?id=<?= htmlspecialchars($partner['id'], ENT_QUOTES) ?>"><?= htmlspecialchars(t('admin.edit', 'ru'), ENT_QUOTES) ?></a>
+                    ·
+                    <form class="inline-form" method="post" action="/admin/partners/delete" onsubmit="return confirm('Удалить партнера?');">
                         <?= csrf_field() ?>
                         <input type="hidden" name="id" value="<?= htmlspecialchars($partner['id'], ENT_QUOTES) ?>">
-                        <button class="btn btn-danger" type="submit"><?= htmlspecialchars(t('admin.delete', 'ru'), ENT_QUOTES) ?></button>
+                        <button class="btn-link" type="submit"><?= htmlspecialchars(t('admin.delete', 'ru'), ENT_QUOTES) ?></button>
                     </form>
                 </td>
             </tr>

@@ -9,9 +9,8 @@
     <table class="table">
         <thead>
         <tr>
-            <th><?= htmlspecialchars(t('admin.product_slug', 'ru'), ENT_QUOTES) ?></th>
             <th><?= htmlspecialchars(t('admin.product_sku', 'ru'), ENT_QUOTES) ?></th>
-            <th><?= htmlspecialchars(t('admin.status', 'ru'), ENT_QUOTES) ?></th>
+            <th><?= htmlspecialchars(t('admin.product_category', 'ru'), ENT_QUOTES) ?></th>
             <th><?= htmlspecialchars(t('admin.language_ru', 'ru'), ENT_QUOTES) ?></th>
             <th><?= htmlspecialchars(t('admin.language_en', 'ru'), ENT_QUOTES) ?></th>
             <th class="table-actions"></th>
@@ -20,25 +19,16 @@
         <tbody>
         <?php foreach ($products as $product) : ?>
             <tr>
-                <td><?= htmlspecialchars($product['slug'], ENT_QUOTES) ?></td>
-                <td><?= htmlspecialchars($product['sku'], ENT_QUOTES) ?></td>
-                <td><?= htmlspecialchars($product['status'], ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars($product['sku'] ?? '', ENT_QUOTES) ?></td>
+                <td><?= htmlspecialchars($product['code'] ?? '', ENT_QUOTES) ?></td>
                 <td><?= htmlspecialchars($product['name_ru'] ?? '', ENT_QUOTES) ?></td>
                 <td><?= htmlspecialchars($product['name_en'] ?? '', ENT_QUOTES) ?></td>
                 <td class="table-actions">
-                    <a href="/admin/products/edit?id=<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>">
-                        <?= htmlspecialchars(t('admin.edit', 'ru'), ENT_QUOTES) ?>
-                    </a>
+                    <a href="/admin/products/edit?id=<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>"><?= htmlspecialchars(t('admin.edit', 'ru'), ENT_QUOTES) ?></a>
                     ·
-                    <a href="/admin/products/specs?id=<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>&lang=ru">
-                        <?= htmlspecialchars(t('admin.specs_ru', 'ru'), ENT_QUOTES) ?>
-                    </a>
+                    <a href="/admin/products/specs?product_id=<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>"><?= htmlspecialchars(t('admin.specs', 'ru'), ENT_QUOTES) ?></a>
                     ·
-                    <a href="/admin/products/specs?id=<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>&lang=en">
-                        <?= htmlspecialchars(t('admin.specs_en', 'ru'), ENT_QUOTES) ?>
-                    </a>
-                    ·
-                    <form class="inline-form" method="post" action="/admin/products/delete" onsubmit="return confirm('Удалить товар?');">
+                    <form class="inline-form" method="post" action="/admin/products/delete" onsubmit="return confirm('Удалить продукт?');">
                         <?= csrf_field() ?>
                         <input type="hidden" name="id" value="<?= htmlspecialchars($product['id'], ENT_QUOTES) ?>">
                         <button class="btn-link" type="submit"><?= htmlspecialchars(t('admin.delete', 'ru'), ENT_QUOTES) ?></button>
