@@ -3,6 +3,8 @@ $videoId = $data['video_id'] ?? null;
 $posterId = $data['poster_id'] ?? null;
 $videoPath = $videoId ? media_path((int) $videoId) : null;
 $posterPath = $posterId ? media_path((int) $posterId) : null;
+$videoPath = $videoPath ?: '/storage/uploads/pages/home/Banner.optimized.mp4';
+$posterPath = $posterPath ?: '/storage/uploads/pages/home/Banner.jpg';
 $titleKey = $data['title_key'] ?? '';
 $subtitleKey = $data['subtitle_key'] ?? '';
 $ctaPrimary = $data['cta_primary'] ?? [];
@@ -13,7 +15,19 @@ $gradient = !empty($data['gradient']);
 <section class="hero">
     <div class="hero-media">
         <?php if ($videoPath) : ?>
-            <video class="hero-video" data-hero-video data-src="<?= htmlspecialchars($videoPath, ENT_QUOTES) ?>" poster="<?= htmlspecialchars($posterPath ?? '', ENT_QUOTES) ?>" muted loop playsinline preload="none"></video>
+            <video
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                poster="<?= htmlspecialchars($posterPath, ENT_QUOTES) ?>"
+                class="hero-video"
+                data-hero-video
+                data-src="<?= htmlspecialchars($videoPath, ENT_QUOTES) ?>"
+            >
+                <source src="<?= htmlspecialchars($videoPath, ENT_QUOTES) ?>" type="video/mp4">
+            </video>
         <?php endif; ?>
         <div class="hero-overlay" style="opacity: <?= htmlspecialchars((string) $overlayOpacity, ENT_QUOTES) ?>"></div>
         <?php if ($gradient) : ?>

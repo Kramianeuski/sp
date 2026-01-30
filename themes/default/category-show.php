@@ -28,14 +28,28 @@
             <button class="btn btn-ghost" type="submit"><?= htmlspecialchars(t('filters.apply', $language), ENT_QUOTES) ?></button>
         </form>
         <div class="product-grid">
-            <?php if (!$products) : ?>
+<?php
+$sanitizeSnippet = static function (?string $text): string {
+    if ($text === null) {
+        return '';
+    }
+    $patterns = [
+        '~sale@a-energ\\.ru~i',
+        '~\\+7\\s*495\\s*\\d{3}[- ]?\\d{2}[- ]?\\d{2}~',
+        '~Индивидуальные решения.*$~isu',
+        '~Контакты для заказа.*$~isu',
+    ];
+    return trim(preg_replace($patterns, '', $text) ?? '');
+};
+?>
+<?php if (!$products) : ?>
                 <p><?= htmlspecialchars(t('products.empty', $language), ENT_QUOTES) ?></p>
             <?php endif; ?>
             <?php foreach ($products as $index => $product) : ?>
-                <a class="product-card" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/products/<?= htmlspecialchars($category['slug'], ENT_QUOTES) ?>/<?= htmlspecialchars($product['slug'], ENT_QUOTES) ?>/">
+                <a class="product-card" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/product/<?= htmlspecialchars($product['slug'], ENT_QUOTES) ?>/">
                     <div class="product-card-content">
                         <h3><?= htmlspecialchars($product['name'], ENT_QUOTES) ?></h3>
-                        <p><?= htmlspecialchars($product['short_description'], ENT_QUOTES) ?></p>
+                        <p><?= htmlspecialchars($sanitizeSnippet($product['short_description'] ?? ''), ENT_QUOTES) ?></p>
                         <?php if (!empty($productFacts[$product['id']])) : ?>
                             <ul>
                                 <?php foreach ($productFacts[$product['id']] as $fact) : ?>
