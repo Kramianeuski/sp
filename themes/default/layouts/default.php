@@ -60,9 +60,28 @@ if (isset($segments[1])) {
             $breadcrumbs[] = [
                 '@type' => 'ListItem',
                 'position' => 3,
-                'name' => $name,
-                'item' => $baseUrl . '/' . $language . '/products/' . $segments[2] . '/',
+                'name' => $productRow['category_name'],
+                'item' => $baseUrl . '/' . $language . '/products/' . $productRow['category_slug'] . '/',
             ];
+            $breadcrumbs[] = [
+                '@type' => 'ListItem',
+                'position' => 4,
+                'name' => $productRow['name'],
+                'item' => $baseUrl . '/' . $language . '/product/' . $segments[2] . '/',
+            ];
+        }
+        if (isset($segments[3])) {
+            $stmt = db()->prepare('SELECT pi.name FROM products p JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = ? JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ? WHERE sm.slug = ?');
+            $stmt->execute([$language, $language, $segments[3]]);
+            $productName = $stmt->fetchColumn();
+            if ($productName) {
+                $breadcrumbs[] = [
+                    '@type' => 'ListItem',
+                    'position' => 4,
+                    'name' => $productName,
+                    'item' => $baseUrl . '/' . $language . '/products/' . $segments[2] . '/' . $segments[3] . '/',
+                ];
+            }
         }
         if (isset($segments[3])) {
             $stmt = db()->prepare('SELECT pi.name FROM products p JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = ? JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ? WHERE sm.slug = ?');

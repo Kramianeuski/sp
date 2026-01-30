@@ -429,7 +429,7 @@ if ($route === 'products' && $param !== null && $subparam === null) {
 
 /*
 |--------------------------------------------------------------------------
-| Product page
+| Product page (new URL)
 |--------------------------------------------------------------------------
 */
 
@@ -510,6 +510,30 @@ if ($route === 'products' && $param !== null && $subparam !== null) {
 
     cache_put($cacheKey, $content);
     echo $content;
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Legacy product URL redirect
+|--------------------------------------------------------------------------
+*/
+
+if ($route === 'products' && $param !== null && $subparam !== null) {
+    $stmt = db()->prepare(
+        'SELECT p.id, sm.slug
+         FROM products p
+         JOIN seo_meta sm ON sm.entity_type = "product" AND sm.entity_id = p.id AND sm.locale = ?
+         WHERE sm.slug = ?
+           AND p.is_active = 1'
+    );
+    $stmt->execute([$language, $subparam]);
+    $product = $stmt->fetch();
+    if ($product) {
+        redirect('/' . $language . '/product/' . $product['slug'] . '/', 301);
+    }
+    http_response_code(404);
+    render('404', ['language' => $language]);
     exit;
 }
 

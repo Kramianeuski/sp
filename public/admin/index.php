@@ -398,6 +398,10 @@ if ($path === '/admin/categories/create') {
         }
 
         if (empty($errors)) {
+            foreach (['ru', 'en'] as $locale) {
+                $baseSlug = slugify($translations[$locale]['name']);
+                $seo[$locale]['slug'] = unique_product_slug($baseSlug, $locale);
+            }
             $pdo = db();
             $pdo->beginTransaction();
             $stmt = $pdo->prepare('INSERT INTO categories (code, is_active, created_at, updated_at) VALUES (?, ?, NOW(), NOW())');
@@ -725,6 +729,7 @@ if ($path === '/admin/partners/create') {
     ];
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $logoMediaId = store_uploaded_media($_FILES['logo'] ?? [], 'partners');
         $pdo = db();
         $pdo->beginTransaction();
         $stmt = $pdo->prepare('INSERT INTO partners (type, name, city, url, sort_order, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())');

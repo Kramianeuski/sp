@@ -65,3 +65,50 @@
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?>
 </script>
+<?php if ($hasMultipleImages) : ?>
+<script>
+    const gallery = document.querySelector('[data-product-gallery]');
+    if (gallery) {
+        const track = gallery.querySelector('[data-gallery-track]');
+        const slides = Array.from(gallery.querySelectorAll('[data-gallery-slide]'));
+        const prevButton = gallery.querySelector('[data-gallery-prev]');
+        const nextButton = gallery.querySelector('[data-gallery-next]');
+        let index = 0;
+        const update = () => {
+            track.style.transform = `translateX(-${index * 100}%)`;
+        };
+        const goNext = () => {
+            index = (index + 1) % slides.length;
+            update();
+        };
+        const goPrev = () => {
+            index = (index - 1 + slides.length) % slides.length;
+            update();
+        };
+        prevButton?.addEventListener('click', goPrev);
+        nextButton?.addEventListener('click', goNext);
+
+        let startX = 0;
+        let isDragging = false;
+        gallery.addEventListener('touchstart', (event) => {
+            startX = event.touches[0].clientX;
+            isDragging = true;
+        });
+        gallery.addEventListener('touchend', (event) => {
+            if (!isDragging) {
+                return;
+            }
+            const endX = event.changedTouches[0].clientX;
+            const delta = endX - startX;
+            if (Math.abs(delta) > 40) {
+                if (delta < 0) {
+                    goNext();
+                } else {
+                    goPrev();
+                }
+            }
+            isDragging = false;
+        });
+    }
+</script>
+<?php endif; ?>

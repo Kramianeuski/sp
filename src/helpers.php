@@ -118,6 +118,115 @@ function slug_from_path(string $path): string
     return end($segments) ?: 'home';
 }
 
+function slugify(string $text): string
+{
+    $text = mb_strtolower(trim($text));
+    $map = [
+        'а' => 'a',
+        'б' => 'b',
+        'в' => 'v',
+        'г' => 'g',
+        'д' => 'd',
+        'е' => 'e',
+        'ё' => 'e',
+        'ж' => 'zh',
+        'з' => 'z',
+        'и' => 'i',
+        'й' => 'y',
+        'к' => 'k',
+        'л' => 'l',
+        'м' => 'm',
+        'н' => 'n',
+        'о' => 'o',
+        'п' => 'p',
+        'р' => 'r',
+        'с' => 's',
+        'т' => 't',
+        'у' => 'u',
+        'ф' => 'f',
+        'х' => 'h',
+        'ц' => 'ts',
+        'ч' => 'ch',
+        'ш' => 'sh',
+        'щ' => 'sch',
+        'ъ' => '',
+        'ы' => 'y',
+        'ь' => '',
+        'э' => 'e',
+        'ю' => 'yu',
+        'я' => 'ya',
+    ];
+    $text = strtr($text, $map);
+    $text = preg_replace('/[^a-z0-9]+/', '-', $text);
+    $text = trim($text, '-');
+
+    return $text !== '' ? $text : 'product';
+}
+
+function unique_product_slug(string $baseSlug, string $locale, ?int $productId = null): string
+{
+    $slug = $baseSlug;
+    $suffix = 1;
+    $params = [$locale, $slug];
+    $sql = 'SELECT entity_id FROM seo_meta WHERE entity_type = "product" AND locale = ? AND slug = ?';
+    if ($productId) {
+        $sql .= ' AND entity_id != ?';
+        $params[] = $productId;
+    }
+    $stmt = db()->prepare($sql);
+    while (true) {
+        $stmt->execute($params);
+        if (!$stmt->fetchColumn()) {
+            return $slug;
+        }
+        $suffix++;
+        $slug = $baseSlug . '-' . $suffix;
+        $params[1] = $slug;
+    }
+}
+
+function store_uploaded_media(array $file, string $directory, string $type = 'image'): ?int
+{
+    if (empty($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK) {
+        return null;
+    }
+
+    $uploadRoot = __DIR__ . '/../storage/uploads/' . trim($directory, '/');
+    if (!is_dir($uploadRoot)) {
+        mkdir($uploadRoot, 0775, true);
+    }
+
+    $extension = pathinfo($file['name'] ?? '', PATHINFO_EXTENSION);
+    $safeExtension = $extension ? '.' . strtolower($extension) : '';
+    $fileName = uniqid('media_', true) . $safeExtension;
+    $targetPath = $uploadRoot . '/' . $fileName;
+
+    if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+        return null;
+    }
+
+    $mime = mime_content_type($targetPath) ?: ($type === 'image' ? 'image/jpeg' : 'application/octet-stream');
+    $size = filesize($targetPath) ?: 0;
+    $width = null;
+    $height = null;
+    if ($type === 'image') {
+        $sizeData = @getimagesize($targetPath);
+        if ($sizeData) {
+            $width = $sizeData[0];
+            $height = $sizeData[1];
+        }
+    }
+
+    $relativePath = '/storage/uploads/' . trim($directory, '/') . '/' . $fileName;
+    $stmt = db()->prepare(
+        'INSERT INTO media (path, type, mime, size_bytes, width, height, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())'
+    );
+    $stmt->execute([$relativePath, $type, $mime, $size, $width, $height]);
+
+    return (int) db()->lastInsertId();
+}
+
 function admin_logged_in(): bool
 {
     return !empty($_SESSION['admin_id']);
