@@ -135,6 +135,15 @@ if ($path === '/admin/partners/delete' && $_SERVER['REQUEST_METHOD'] === 'POST')
     redirect('/admin/partners');
 }
 
+if ($path === '/admin/product-partner-links/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $linkId = (int) ($_POST['id'] ?? 0);
+    if ($linkId > 0) {
+        $stmt = db()->prepare('DELETE FROM product_partner_links WHERE id = ?');
+        $stmt->execute([$linkId]);
+    }
+    redirect('/admin/product-partner-links');
+}
+
 if ($path === '/admin/blocks/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $sectionId = (int) ($_POST['id'] ?? 0);
     $pageId = (int) ($_POST['page_id'] ?? 0);
@@ -714,6 +723,93 @@ if ($path === '/admin/partners') {
     exit;
 }
 
+if ($path === '/admin/product-partner-links') {
+    $stmt = db()->query(
+        'SELECT ppl.id, ppl.product_url, ppl.is_active, p.sku, pi.name AS product_name, pr.name AS partner_name
+         FROM product_partner_links ppl
+         JOIN products p ON p.id = ppl.product_id
+         JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = "ru"
+         JOIN partners pr ON pr.id = ppl.partner_id
+         ORDER BY ppl.id DESC'
+    );
+    $links = $stmt->fetchAll();
+    render_partial('admin/product-partner-links', ['links' => $links]);
+    exit;
+}
+
+if ($path === '/admin/product-partner-links/create') {
+    $productsStmt = db()->query(
+        'SELECT p.id, p.sku, pi.name
+         FROM products p
+         JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = "ru"
+         ORDER BY pi.name'
+    );
+    $partnersStmt = db()->query('SELECT id, name, type FROM partners ORDER BY sort_order, id');
+    $products = $productsStmt->fetchAll();
+    $partners = $partnersStmt->fetchAll();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $stmt = db()->prepare(
+            'INSERT INTO product_partner_links (product_id, partner_id, product_url, is_active)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE product_url = VALUES(product_url), is_active = VALUES(is_active)'
+        );
+        $stmt->execute([
+            (int) ($_POST['product_id'] ?? 0),
+            (int) ($_POST['partner_id'] ?? 0),
+            trim($_POST['product_url'] ?? ''),
+            isset($_POST['is_active']) ? 1 : 0,
+        ]);
+        redirect('/admin/product-partner-links');
+    }
+
+    render_partial('admin/product-partner-link-create', [
+        'products' => $products,
+        'partners' => $partners,
+    ]);
+    exit;
+}
+
+if ($path === '/admin/product-partner-links/edit' && isset($_GET['id'])) {
+    $linkId = (int) $_GET['id'];
+    $stmt = db()->prepare('SELECT * FROM product_partner_links WHERE id = ?');
+    $stmt->execute([$linkId]);
+    $link = $stmt->fetch();
+    if (!$link) {
+        redirect('/admin/product-partner-links');
+    }
+    $productsStmt = db()->query(
+        'SELECT p.id, p.sku, pi.name
+         FROM products p
+         JOIN product_i18n pi ON pi.product_id = p.id AND pi.locale = "ru"
+         ORDER BY pi.name'
+    );
+    $partnersStmt = db()->query('SELECT id, name, type FROM partners ORDER BY sort_order, id');
+    $products = $productsStmt->fetchAll();
+    $partners = $partnersStmt->fetchAll();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $update = db()->prepare(
+            'UPDATE product_partner_links SET product_id = ?, partner_id = ?, product_url = ?, is_active = ? WHERE id = ?'
+        );
+        $update->execute([
+            (int) ($_POST['product_id'] ?? $link['product_id']),
+            (int) ($_POST['partner_id'] ?? $link['partner_id']),
+            trim($_POST['product_url'] ?? ''),
+            isset($_POST['is_active']) ? 1 : 0,
+            $linkId,
+        ]);
+        redirect('/admin/product-partner-links/edit?id=' . $linkId);
+    }
+
+    render_partial('admin/product-partner-link-edit', [
+        'link' => $link,
+        'products' => $products,
+        'partners' => $partners,
+    ]);
+    exit;
+}
+
 if ($path === '/admin/partners/create') {
     $partner = [
         'type' => $_POST['type'] ?? 'distributor',
@@ -729,10 +825,12 @@ if ($path === '/admin/partners/create') {
     ];
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $logoMediaId = store_uploaded_media($_FILES['logo'] ?? [], 'partners');
+        $logoSmallId = store_uploaded_media($_FILES['logo_small'] ?? [], 'partners');
+        $logoLargeId = store_uploaded_media($_FILES['logo_large'] ?? [], 'partners');
+        $logoFallbackId = $logoSmallId ?? $logoLargeId;
         $pdo = db();
         $pdo->beginTransaction();
-        $stmt = $pdo->prepare('INSERT INTO partners (type, name, city, url, sort_order, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())');
+        $stmt = $pdo->prepare('INSERT INTO partners (type, name, city, url, sort_order, is_active, logo_media_id, logo_small_media_id, logo_large_media_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
         $stmt->execute([
             $partner['type'],
             $partner['name'],
@@ -740,6 +838,9 @@ if ($path === '/admin/partners/create') {
             $partner['url'],
             $partner['sort_order'],
             $partner['is_active'],
+            $logoFallbackId,
+            $logoSmallId,
+            $logoLargeId,
         ]);
         $partnerId = (int) $pdo->lastInsertId();
         $insertTranslation = $pdo->prepare('INSERT INTO partner_i18n (partner_id, locale, description, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())');
@@ -773,6 +874,9 @@ if ($path === '/admin/partners/edit' && isset($_GET['id'])) {
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $logoSmallId = store_uploaded_media($_FILES['logo_small'] ?? [], 'partners');
+        $logoLargeId = store_uploaded_media($_FILES['logo_large'] ?? [], 'partners');
+        $logoFallbackId = $logoSmallId ?? $logoLargeId ?? $partner['logo_media_id'];
         $update = db()->prepare('UPDATE partners SET type = ?, name = ?, city = ?, url = ?, sort_order = ?, is_active = ?, updated_at = NOW() WHERE id = ?');
         $update->execute([
             $_POST['type'] ?? $partner['type'],
@@ -783,6 +887,15 @@ if ($path === '/admin/partners/edit' && isset($_GET['id'])) {
             isset($_POST['is_active']) ? 1 : 0,
             $partnerId,
         ]);
+        if ($logoSmallId || $logoLargeId) {
+            $logoUpdate = db()->prepare('UPDATE partners SET logo_media_id = ?, logo_small_media_id = COALESCE(?, logo_small_media_id), logo_large_media_id = COALESCE(?, logo_large_media_id), updated_at = NOW() WHERE id = ?');
+            $logoUpdate->execute([
+                $logoFallbackId,
+                $logoSmallId,
+                $logoLargeId,
+                $partnerId,
+            ]);
+        }
         $updateTranslation = db()->prepare('UPDATE partner_i18n SET description = ?, updated_at = NOW() WHERE partner_id = ? AND locale = ?');
         foreach (['ru', 'en'] as $locale) {
             $updateTranslation->execute([

@@ -185,6 +185,41 @@ function unique_product_slug(string $baseSlug, string $locale, ?int $productId =
     }
 }
 
+function clean_branding_text(string $text): string
+{
+    $replacements = [
+        'Аргумент Энерго' => 'System Power',
+        'Argument Energo' => 'System Power',
+        'a-energ' => 'System Power',
+        'A-ENERG' => 'System Power',
+        'A-Energ' => 'System Power',
+    ];
+
+    $cleaned = str_replace(array_keys($replacements), array_values($replacements), $text);
+    $cleaned = preg_replace('/System Power\s*System Power/i', 'System Power', $cleaned);
+
+    return trim($cleaned);
+}
+
+function clean_product_text(string $text): string
+{
+    $patterns = [
+        '/Индивидуальные решения и оптовые заказы/iu',
+        '/Контакты для заказа/iu',
+        '/sale@a-energ\.ru/iu',
+        '/mailto:sale@a-energ\.ru/iu',
+        '/\+7\s*\d{3}\s*\d{3}[-\s]?\d{2}[-\s]?\d{2}/u',
+        '/Аргумент Энерго/iu',
+        '/a-energ/iu',
+    ];
+
+    $cleaned = preg_replace($patterns, '', $text);
+    $cleaned = preg_replace('/\s{2,}/u', ' ', $cleaned);
+    $cleaned = preg_replace('/\s+([,.:;])/u', '$1', $cleaned);
+
+    return trim($cleaned);
+}
+
 function store_uploaded_media(array $file, string $directory, string $type = 'image'): ?int
 {
     if (empty($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK) {
@@ -284,9 +319,15 @@ function partners_list(string $language, ?string $type = null, bool $onlyActive 
 {
     $query = '
         SELECT p.id, p.type, p.name, p.url, p.city, p.sort_order,
-               pi.description
+               p.logo_media_id, p.logo_small_media_id, p.logo_large_media_id,
+               pi.description,
+               COALESCE(ms.path, m.path) AS logo_small_path,
+               COALESCE(ml.path, m.path) AS logo_large_path
         FROM partners p
         JOIN partner_i18n pi ON pi.partner_id = p.id AND pi.locale = ?
+        LEFT JOIN media m ON m.id = p.logo_media_id
+        LEFT JOIN media ms ON ms.id = p.logo_small_media_id
+        LEFT JOIN media ml ON ml.id = p.logo_large_media_id
     ';
     $params = [$language];
     $conditions = [];
@@ -307,6 +348,27 @@ function partners_list(string $language, ?string $type = null, bool $onlyActive 
 
     $stmt = db()->prepare($query);
     $stmt->execute($params);
+
+    return $stmt->fetchAll();
+}
+
+function product_partner_links(int $productId, string $language): array
+{
+    $stmt = db()->prepare(
+        'SELECT ppl.product_url, p.name, p.url, p.type, p.sort_order,
+                COALESCE(ms.path, m.path) AS logo_small_path,
+                pi.description
+         FROM product_partner_links ppl
+         JOIN partners p ON p.id = ppl.partner_id
+         JOIN partner_i18n pi ON pi.partner_id = p.id AND pi.locale = ?
+         LEFT JOIN media m ON m.id = p.logo_media_id
+         LEFT JOIN media ms ON ms.id = p.logo_small_media_id
+         WHERE ppl.product_id = ?
+           AND ppl.is_active = 1
+           AND p.is_active = 1
+         ORDER BY p.sort_order, p.id'
+    );
+    $stmt->execute([$language, $productId]);
 
     return $stmt->fetchAll();
 }

@@ -5,7 +5,7 @@
         <a class="btn btn-secondary" href="/admin/partners"><?= htmlspecialchars(t('admin.back', 'ru'), ENT_QUOTES) ?></a>
     </div>
 </div>
-<form method="post" class="card form-card">
+<form method="post" class="card form-card" enctype="multipart/form-data">
     <?= csrf_field() ?>
     <div class="field">
         <label><?= htmlspecialchars(t('admin.partner_type', 'ru'), ENT_QUOTES) ?></label>
@@ -25,6 +25,26 @@
     <div class="field">
         <label><?= htmlspecialchars(t('admin.partner_url', 'ru'), ENT_QUOTES) ?></label>
         <input type="text" name="url" value="<?= htmlspecialchars($partner['url'], ENT_QUOTES) ?>">
+    </div>
+    <div class="field">
+        <label><?= htmlspecialchars(t('admin.partner_logo_small', 'ru'), ENT_QUOTES) ?></label>
+        <?php $smallLogo = media_path($partner['logo_small_media_id'] ?? null); ?>
+        <?php if (!empty($smallLogo)) : ?>
+            <div class="media-preview">
+                <img src="<?= htmlspecialchars($smallLogo, ENT_QUOTES) ?>" alt="<?= htmlspecialchars($partner['name'], ENT_QUOTES) ?>" style="max-width: 120px;">
+            </div>
+        <?php endif; ?>
+        <input type="file" name="logo_small" accept="image/*">
+    </div>
+    <div class="field">
+        <label><?= htmlspecialchars(t('admin.partner_logo_large', 'ru'), ENT_QUOTES) ?></label>
+        <?php $largeLogo = media_path($partner['logo_large_media_id'] ?? null); ?>
+        <?php if (!empty($largeLogo)) : ?>
+            <div class="media-preview">
+                <img src="<?= htmlspecialchars($largeLogo, ENT_QUOTES) ?>" alt="<?= htmlspecialchars($partner['name'], ENT_QUOTES) ?>" style="max-width: 180px;">
+            </div>
+        <?php endif; ?>
+        <input type="file" name="logo_large" accept="image/*">
     </div>
     <div class="field">
         <label><?= htmlspecialchars(t('admin.sort_order', 'ru'), ENT_QUOTES) ?></label>
