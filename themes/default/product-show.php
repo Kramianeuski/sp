@@ -17,49 +17,88 @@
 <section class="section">
     <div class="container">
         <div class="product-layout">
-            <div class="product-gallery" data-product-gallery>
-                <?php if (!empty($images)) : ?>
-                    <div class="product-gallery-track" data-gallery-track>
-                        <?php foreach ($images as $index => $image) : ?>
-                            <div class="product-gallery-slide" data-gallery-slide>
-                                <img
-                                    src="<?= htmlspecialchars($image['path'], ENT_QUOTES) ?>"
-                                    alt="<?= htmlspecialchars($image['alt_key'] ? t($image['alt_key'], $language) : $product['name'], ENT_QUOTES) ?>"
-                                    loading="<?= $index === 0 ? 'eager' : 'lazy' ?>"
-                                    <?= $index === 0 ? 'fetchpriority="high"' : '' ?>
-                                >
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                    <?php if ($hasMultipleImages) : ?>
-                        <button class="gallery-nav gallery-prev" type="button" data-gallery-prev aria-label="<?= htmlspecialchars(t('gallery.prev', $language), ENT_QUOTES) ?>">←</button>
-                        <button class="gallery-nav gallery-next" type="button" data-gallery-next aria-label="<?= htmlspecialchars(t('gallery.next', $language), ENT_QUOTES) ?>">→</button>
-                    <?php endif; ?>
-                <?php else : ?>
-                    <div class="product-placeholder"></div>
-                <?php endif; ?>
-            </div>
-            <div class="product-details">
-                <div class="product-description">
-                    <h2><?= htmlspecialchars(t('product.description_title', $language), ENT_QUOTES) ?></h2>
-                    <?php if (!empty($product['is_html'])) : ?>
-                        <div class="text-block"><?= $product['description'] ?></div>
+            <div class="product-hero">
+                <div class="product-gallery" data-product-gallery>
+                    <?php if (!empty($images)) : ?>
+                        <div class="product-gallery-track" data-gallery-track>
+                            <?php foreach ($images as $index => $image) : ?>
+                                <div class="product-gallery-slide" data-gallery-slide>
+                                    <img
+                                        src="<?= htmlspecialchars($image['path'], ENT_QUOTES) ?>"
+                                        alt="<?= htmlspecialchars($image['alt_key'] ? t($image['alt_key'], $language) : $product['name'], ENT_QUOTES) ?>"
+                                        loading="<?= $index === 0 ? 'eager' : 'lazy' ?>"
+                                        <?= $index === 0 ? 'fetchpriority="high"' : '' ?>
+                                    >
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php if ($hasMultipleImages) : ?>
+                            <button class="gallery-nav gallery-prev" type="button" data-gallery-prev aria-label="<?= htmlspecialchars(t('gallery.prev', $language), ENT_QUOTES) ?>">←</button>
+                            <button class="gallery-nav gallery-next" type="button" data-gallery-next aria-label="<?= htmlspecialchars(t('gallery.next', $language), ENT_QUOTES) ?>">→</button>
+                        <?php endif; ?>
                     <?php else : ?>
-                        <p><?= nl2br(htmlspecialchars($product['description'], ENT_QUOTES)) ?></p>
+                        <div class="product-placeholder"></div>
+                    <?php endif; ?>
+                    <?php if ($hasMultipleImages) : ?>
+                        <div class="product-gallery-thumbs" data-gallery-thumbs>
+                            <?php foreach ($images as $index => $image) : ?>
+                                <button class="product-thumb" type="button" data-gallery-thumb="<?= $index ?>" aria-label="<?= htmlspecialchars($product['name'], ENT_QUOTES) ?>">
+                                    <img src="<?= htmlspecialchars($image['path'], ENT_QUOTES) ?>" alt="<?= htmlspecialchars($image['alt_key'] ? t($image['alt_key'], $language) : $product['name'], ENT_QUOTES) ?>" loading="lazy">
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
                     <?php endif; ?>
                 </div>
-                <?php if (!empty($specs)) : ?>
-                    <div class="product-specs">
-                        <h2><?= htmlspecialchars(t('product.specs_title', $language), ENT_QUOTES) ?></h2>
-                        <table>
-                            <?php foreach ($specs as $spec) : ?>
-                                <tr>
-                                    <th><?= htmlspecialchars($spec['name'], ENT_QUOTES) ?></th>
-                                    <td><?= htmlspecialchars($spec['value'], ENT_QUOTES) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </table>
-                    </div>
+                <div class="product-details">
+                    <?php if (!empty($specs)) : ?>
+                        <div class="product-specs">
+                            <h2><?= htmlspecialchars(t('product.specs_title', $language), ENT_QUOTES) ?></h2>
+                            <table>
+                                <?php foreach ($specs as $spec) : ?>
+                                    <tr>
+                                        <th><?= htmlspecialchars($spec['name'], ENT_QUOTES) ?></th>
+                                        <td><?= htmlspecialchars($spec['value'], ENT_QUOTES) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($partnerLinks)) : ?>
+                        <div class="product-buy" data-product-buy>
+                            <button class="product-buy-toggle" type="button" aria-expanded="false">
+                                <span><?= htmlspecialchars(t('product.where_buy', $language), ENT_QUOTES) ?></span>
+                                <span class="product-buy-icon" aria-hidden="true">+</span>
+                            </button>
+                            <div class="product-buy-panel" hidden>
+                                <div class="partner-logos">
+                                    <?php foreach ($partnerLinks as $partner) : ?>
+                                        <a
+                                            class="partner-logo"
+                                            href="<?= htmlspecialchars($partner['product_url'], ENT_QUOTES) ?>"
+                                            target="_blank"
+                                            rel="nofollow sponsored noopener"
+                                            title="<?= htmlspecialchars($partner['name'], ENT_QUOTES) ?>"
+                                            aria-label="<?= htmlspecialchars($partner['name'], ENT_QUOTES) ?>"
+                                        >
+                                            <?php if (!empty($partner['logo_small_path'])) : ?>
+                                                <img src="<?= htmlspecialchars($partner['logo_small_path'], ENT_QUOTES) ?>" alt="<?= htmlspecialchars($partner['name'], ENT_QUOTES) ?>" loading="lazy">
+                                            <?php else : ?>
+                                                <span><?= htmlspecialchars(mb_substr($partner['name'], 0, 1), ENT_QUOTES) ?></span>
+                                            <?php endif; ?>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div class="product-description">
+                <h2><?= htmlspecialchars(t('product.description_title', $language), ENT_QUOTES) ?></h2>
+                <?php if (!empty($product['is_html'])) : ?>
+                    <div class="text-block"><?= $product['description'] ?></div>
+                <?php else : ?>
+                    <p><?= nl2br(htmlspecialchars($product['description'], ENT_QUOTES)) ?></p>
                 <?php endif; ?>
             </div>
         </div>
@@ -87,9 +126,19 @@
         const slides = Array.from(gallery.querySelectorAll('[data-gallery-slide]'));
         const prevButton = gallery.querySelector('[data-gallery-prev]');
         const nextButton = gallery.querySelector('[data-gallery-next]');
+        const thumbs = Array.from(gallery.querySelectorAll('[data-gallery-thumb]'));
         let index = 0;
         const update = () => {
             track.style.transform = `translateX(-${index * 100}%)`;
+            thumbs.forEach((thumb, idx) => {
+                if (idx === index) {
+                    thumb.classList.add('is-active');
+                    thumb.setAttribute('aria-current', 'true');
+                } else {
+                    thumb.classList.remove('is-active');
+                    thumb.removeAttribute('aria-current');
+                }
+            });
         };
         const goNext = () => {
             index = (index + 1) % slides.length;
@@ -101,6 +150,15 @@
         };
         prevButton?.addEventListener('click', goPrev);
         nextButton?.addEventListener('click', goNext);
+        thumbs.forEach((thumb) => {
+            thumb.addEventListener('click', () => {
+                const nextIndex = Number(thumb.dataset.galleryThumb || 0);
+                if (!Number.isNaN(nextIndex)) {
+                    index = nextIndex;
+                    update();
+                }
+            });
+        });
 
         let startX = 0;
         let isDragging = false;
@@ -122,6 +180,23 @@
                 }
             }
             isDragging = false;
+        });
+        update();
+    }
+</script>
+<?php endif; ?>
+<?php if (!empty($partnerLinks)) : ?>
+<script>
+    const buySection = document.querySelector('[data-product-buy]');
+    if (buySection) {
+        const toggle = buySection.querySelector('.product-buy-toggle');
+        const panel = buySection.querySelector('.product-buy-panel');
+        toggle?.addEventListener('click', () => {
+            const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+            toggle.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
+            if (panel) {
+                panel.hidden = isExpanded;
+            }
         });
     }
 </script>

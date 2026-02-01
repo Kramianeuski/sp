@@ -23,8 +23,8 @@ $filters = [
             <?php foreach ($partners as $partner) : ?>
                 <article class="partner-card" data-partner-type="<?= htmlspecialchars($partner['type'], ENT_QUOTES) ?>">
                     <div class="partner-header">
-                        <?php if (!empty($partner['logo_path'])) : ?>
-                            <img src="<?= htmlspecialchars($partner['logo_path'], ENT_QUOTES) ?>" alt="<?= htmlspecialchars($partner['name'], ENT_QUOTES) ?>">
+                        <?php if (!empty($partner['logo_large_path'])) : ?>
+                            <img src="<?= htmlspecialchars($partner['logo_large_path'], ENT_QUOTES) ?>" alt="<?= htmlspecialchars($partner['name'], ENT_QUOTES) ?>">
                         <?php endif; ?>
                         <div>
                             <h3><?= htmlspecialchars($partner['name'], ENT_QUOTES) ?></h3>

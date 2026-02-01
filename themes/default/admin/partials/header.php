@@ -17,6 +17,7 @@
             <a href="/admin/products"><?= htmlspecialchars(t('admin.nav_products', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/products/import"><?= htmlspecialchars(t('admin.nav_import', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/partners"><?= htmlspecialchars(t('admin.nav_partners', 'ru'), ENT_QUOTES) ?></a>
+            <a href="/admin/product-partner-links"><?= htmlspecialchars(t('admin.nav_partner_links', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/leads"><?= htmlspecialchars(t('admin.nav_leads', 'ru'), ENT_QUOTES) ?></a>
             <a href="/admin/translations"><?= htmlspecialchars(t('admin.nav_translations', 'ru'), ENT_QUOTES) ?></a>
         </nav>

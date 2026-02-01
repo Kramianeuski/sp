@@ -25,7 +25,13 @@ $ogTitle = $pageData['og_title'] ?? $metaTitle;
 $ogDescription = $pageData['og_description'] ?? $metaDescription;
 $ogImageId = $pageData['og_image_id'] ?? null;
 $ogImage = $ogImageId ? media_path((int) $ogImageId) : null;
+$robots = $pageData['robots'] ?? 'index,follow';
 $isHome = ($pageData['slug'] ?? '') === 'home';
+
+$metaTitle = clean_branding_text($metaTitle);
+$metaDescription = clean_branding_text($metaDescription);
+$ogTitle = clean_branding_text($ogTitle);
+$ogDescription = clean_branding_text($ogDescription);
 
 $currentPath = $_SERVER['REQUEST_URI'] ?? '/';
 $ruLink = preg_replace('#^/en/#', '/ru/', $currentPath);
@@ -129,7 +135,7 @@ if (isset($segments[1])) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($metaTitle, ENT_QUOTES) ?></title>
     <meta name="description" content="<?= htmlspecialchars($metaDescription, ENT_QUOTES) ?>">
-    <meta name="robots" content="index,follow">
+    <meta name="robots" content="<?= htmlspecialchars($robots, ENT_QUOTES) ?>">
     <?php if (!empty($canonical)) : ?>
         <link rel="canonical" href="<?= htmlspecialchars($canonical, ENT_QUOTES) ?>">
     <?php endif; ?>
@@ -243,8 +249,10 @@ if (isset($segments[1])) {
                 <div class="footer-title"><?= htmlspecialchars(t('footer.contacts', $language), ENT_QUOTES) ?></div>
                 <div class="footer-text"><?= nl2br(htmlspecialchars(t('footer.contacts_text', $language), ENT_QUOTES)) ?></div>
                 <div class="footer-social">
-                    <a href="<?= htmlspecialchars(t('footer.telegram_link', $language), ENT_QUOTES) ?>" target="_blank" rel="noopener noreferrer">
-                        <?= htmlspecialchars(t('footer.telegram_label', $language), ENT_QUOTES) ?>
+                    <a class="telegram-icon" href="<?= htmlspecialchars(t('footer.telegram_link', $language), ENT_QUOTES) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= htmlspecialchars(t('footer.telegram_label', $language), ENT_QUOTES) ?>">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M21.6 3.6c.4-.16.82.2.72.62l-3.4 16.12c-.08.38-.5.6-.84.4l-4.64-2.62-2.32 2.24c-.26.26-.72.14-.8-.22l.36-3.98 9.5-8.7c.24-.22.02-.62-.3-.46l-11.68 5.98-4.94-1.56c-.38-.12-.4-.64-.04-.8L21.6 3.6Z"/>
+                        </svg>
                     </a>
                 </div>
             </div>

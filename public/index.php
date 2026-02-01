@@ -364,6 +364,7 @@ if ($route === 'products' && $param !== null && $subparam === null) {
 
     $search = trim($_GET['q'] ?? '');
     $sort = $_GET['sort'] ?? 'name';
+    $hasFilters = $search !== '' || $sort !== 'name';
 
     $query = '
         SELECT p.id, p.sku, pi.name, pi.short_description, sm.slug
@@ -420,6 +421,7 @@ if ($route === 'products' && $param !== null && $subparam === null) {
             'meta_title' => $category['title'] ?? $category['name'],
             'meta_description' => $category['meta_description'] ?? $category['description'],
             'canonical' => config('base_url') . '/' . $language . '/products/' . $category['slug'] . '/',
+            'robots' => $hasFilters ? 'noindex,follow' : 'index,follow',
             'og_title' => $category['title'] ?? $category['name'],
             'og_description' => $category['meta_description'] ?? $category['description'],
             'slug' => $category['slug'],
@@ -485,6 +487,9 @@ if ($route === 'product' && $param !== null && $subparam === null) {
         exit;
     }
 
+    $product['short_description'] = clean_product_text($product['short_description'] ?? '');
+    $product['description'] = clean_product_text($product['description'] ?? '');
+
     $categoryStmt = db()->prepare(
         'SELECT c.id, c.code, ci.name, sm.slug
          FROM categories c
@@ -541,6 +546,7 @@ if ($route === 'product' && $param !== null && $subparam === null) {
         'product' => $product,
         'images' => $images->fetchAll(),
         'specs' => $specs->fetchAll(),
+        'partnerLinks' => product_partner_links((int) $product['id'], $language),
     ]);
     $content = ob_get_clean();
 
