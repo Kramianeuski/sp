@@ -201,6 +201,28 @@ function clean_branding_text(string $text): string
     return trim($cleaned);
 }
 
+function format_product_name(string $name, ?string $sku = null, string $brand = 'System Power'): string
+{
+    $base = preg_replace('/\b' . preg_quote($brand, '/') . '\b/iu', '', $name);
+    if ($sku) {
+        $base = preg_replace('/\b' . preg_quote($sku, '/') . '\b/iu', '', $base);
+    }
+    $base = preg_replace('/\s*\|\s*/u', ' ', $base);
+    $base = preg_replace('/\s{2,}/u', ' ', $base);
+    $base = trim($base);
+
+    $parts = [];
+    if ($base !== '') {
+        $parts[] = $base;
+    }
+    if ($sku) {
+        $parts[] = $sku;
+    }
+    $parts[] = $brand;
+
+    return trim(preg_replace('/\s{2,}/u', ' ', implode(' ', $parts)));
+}
+
 function clean_product_text(string $text): string
 {
     $patterns = [
@@ -218,6 +240,118 @@ function clean_product_text(string $text): string
     $cleaned = preg_replace('/\s+([,.:;])/u', '$1', $cleaned);
 
     return trim($cleaned);
+}
+
+function format_product_description(string $text): string
+{
+    if (preg_match('/<\/(p|ul|ol|table|h2|h3)>/i', $text)) {
+        return $text;
+    }
+
+    $text = str_replace(["\r\n", "\r"], "\n", $text);
+
+    $headings = [
+        'Технические характеристики',
+        'Технические параметры',
+        'Преимущества',
+        'Назначение',
+        'Конструкция и особенности',
+        'Комплект поставки',
+        'Дополнительная информация',
+        'Technical specifications',
+        'Technical parameters',
+        'Advantages',
+        'Purpose',
+        'Design and features',
+        'Package contents',
+        'Additional information',
+    ];
+
+    foreach ($headings as $heading) {
+        $pattern = '/\b' . preg_quote($heading, '/') . '\b/u';
+        $text = preg_replace($pattern, "\n\n## " . $heading . "\n", $text);
+    }
+
+    $text = preg_replace('/:\s*—/u', ":\n- ", $text);
+    $text = preg_replace('/\n—\s*/u', "\n- ", $text);
+    $text = preg_replace('/\n-\s*/u', "\n- ", $text);
+    $text = preg_replace('/\s{2,}/u', ' ', $text);
+
+    $blocks = preg_split('/\n{2,}/', trim($text));
+    $html = [];
+
+    foreach ($blocks as $block) {
+        $block = trim($block);
+        if ($block === '') {
+            continue;
+        }
+        if (str_starts_with($block, '## ')) {
+            $title = trim(mb_substr($block, 3));
+            if ($title !== '') {
+                $html[] = '<h3>' . htmlspecialchars($title, ENT_QUOTES) . '</h3>';
+            }
+            continue;
+        }
+
+        $lines = array_values(array_filter(array_map('trim', explode("\n", $block)), static fn($line) => $line !== ''));
+        $listItems = [];
+        foreach ($lines as $line) {
+            if (str_starts_with($line, '- ')) {
+                $listItems[] = mb_substr($line, 2);
+            }
+        }
+
+        if ($listItems) {
+            $itemsHtml = array_map(static fn($item) => '<li>' . htmlspecialchars($item, ENT_QUOTES) . '</li>', $listItems);
+            $html[] = '<ul>' . implode('', $itemsHtml) . '</ul>';
+        } else {
+            $paragraph = htmlspecialchars(implode(' ', $lines), ENT_QUOTES);
+            $html[] = '<p>' . $paragraph . '</p>';
+        }
+    }
+
+    return implode("\n", $html);
+}
+
+function category_faq(string $categoryCode, string $language): array
+{
+    $faqMap = [
+        'hatches' => [
+            ['faq.hatches.q1', 'faq.hatches.a1'],
+            ['faq.hatches.q2', 'faq.hatches.a2'],
+            ['faq.hatches.q3', 'faq.hatches.a3'],
+            ['faq.hatches.q4', 'faq.hatches.a4'],
+            ['faq.hatches.q5', 'faq.hatches.a5'],
+            ['faq.hatches.q6', 'faq.hatches.a6'],
+            ['faq.hatches.q7', 'faq.hatches.a7'],
+            ['faq.hatches.q8', 'faq.hatches.a8'],
+            ['faq.hatches.q9', 'faq.hatches.a9'],
+            ['faq.hatches.q10', 'faq.hatches.a10'],
+        ],
+        'electrical_cabinets' => [
+            ['faq.rusp.q1', 'faq.rusp.a1'],
+            ['faq.rusp.q2', 'faq.rusp.a2'],
+            ['faq.rusp.q3', 'faq.rusp.a3'],
+            ['faq.rusp.q4', 'faq.rusp.a4'],
+            ['faq.rusp.q5', 'faq.rusp.a5'],
+            ['faq.rusp.q6', 'faq.rusp.a6'],
+        ],
+    ];
+
+    $items = [];
+    foreach ($faqMap[$categoryCode] ?? [] as [$questionKey, $answerKey]) {
+        $question = t($questionKey, $language);
+        $answer = t($answerKey, $language);
+        if (str_starts_with($question, '[[') || str_starts_with($answer, '[[')) {
+            continue;
+        }
+        $items[] = [
+            'question' => $question,
+            'answer' => $answer,
+        ];
+    }
+
+    return $items;
 }
 
 function store_uploaded_media(array $file, string $directory, string $type = 'image'): ?int

@@ -1,8 +1,12 @@
 <?php
 $items = $data['items'] ?? [];
+$titleKey = $data['title_key'] ?? '';
 ?>
 <section class="section section-categories">
     <div class="container">
+        <?php if ($titleKey) : ?>
+            <h2><?= htmlspecialchars(t($titleKey, $language), ENT_QUOTES) ?></h2>
+        <?php endif; ?>
         <div class="category-grid">
             <?php foreach ($items as $item) : ?>
                 <a class="category-card" href="<?= htmlspecialchars(localized_url($item['url'] ?? '#', $language), ENT_QUOTES) ?>">

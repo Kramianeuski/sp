@@ -180,7 +180,6 @@ $subparam = $segments[3] ?? null;
 if ($route === 'custom-production' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $errors = [];
     $fullName = trim($_POST['full_name'] ?? '');
-    $company = trim($_POST['company'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $telegram = trim($_POST['telegram'] ?? '');
@@ -210,21 +209,18 @@ if ($route === 'custom-production' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         'telegram' => $telegram,
         'whatsapp' => $whatsapp,
     ];
-    $hasContact = false;
-    foreach ($contactFields as $value) {
-        if ($value !== '') {
-            $hasContact = true;
-            break;
-        }
-    }
-    if (!$hasContact) {
-        $errors['contact'] = t('form.error.contact', $language);
-    }
 
     if ($preferredContact === '' || !in_array($preferredContact, ['phone', 'email', 'telegram', 'whatsapp'], true)) {
         $errors['preferred_contact'] = t('form.error.preferred', $language);
-    } elseif (($contactFields[$preferredContact] ?? '') === '') {
-        $errors['preferred_contact'] = t('form.error.preferred_match', $language);
+    } else {
+        $selectedValue = $contactFields[$preferredContact] ?? '';
+        if ($selectedValue === '') {
+            $errors['contact'] = t('form.error.contact', $language);
+        } elseif ($preferredContact === 'email' && !filter_var($selectedValue, FILTER_VALIDATE_EMAIL)) {
+            $errors['contact'] = t('form.error.email', $language);
+        } elseif ($preferredContact === 'telegram' && !str_starts_with($selectedValue, '@')) {
+            $errors['contact'] = t('form.error.telegram', $language);
+        }
     }
 
     if ($message === '') {
@@ -247,7 +243,7 @@ if ($route === 'custom-production' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         $stmt->execute([
             $fullName,
-            $company ?: null,
+            null,
             $phone ?: null,
             $email ?: null,
             $telegram ?: null,
@@ -263,7 +259,6 @@ if ($route === 'custom-production' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['lead_errors'] = $errors;
     $_SESSION['lead_old'] = [
         'full_name' => $fullName,
-        'company' => $company,
         'phone' => $phone,
         'email' => $email,
         'telegram' => $telegram,
@@ -334,7 +329,7 @@ if ($route === 'products' && $param === null) {
 
 if ($route === 'products' && $param !== null && $subparam === null) {
     $stmt = db()->prepare(
-        'SELECT c.id, c.code, ci.name, ci.description, sm.title, sm.description AS meta_description, sm.h1, sm.slug
+        'SELECT c.id, c.code, ci.name, ci.description, ci.is_html, sm.title, sm.description AS meta_description, sm.h1, sm.slug
          FROM categories c
          JOIN category_i18n ci ON ci.category_id = c.id AND ci.locale = ?
          JOIN seo_meta sm ON sm.entity_type = "category" AND sm.entity_id = c.id AND sm.locale = ?
@@ -364,7 +359,10 @@ if ($route === 'products' && $param !== null && $subparam === null) {
 
     $search = trim($_GET['q'] ?? '');
     $sort = $_GET['sort'] ?? 'name';
-    $hasFilters = $search !== '' || $sort !== 'name';
+    $filters = $_GET['filters'] ?? [];
+    if (!is_array($filters)) {
+        $filters = [];
+    }
 
     $query = '
         SELECT p.id, p.sku, pi.name, pi.short_description, sm.slug
@@ -384,6 +382,23 @@ if ($route === 'products' && $param !== null && $subparam === null) {
         $params[] = $like;
     }
 
+    $activeFilters = [];
+    foreach ($filters as $specKey => $values) {
+        if (!is_array($values)) {
+            $values = [$values];
+        }
+        $values = array_values(array_filter(array_map('trim', $values), static fn($value) => $value !== ''));
+        if (!$values) {
+            continue;
+        }
+        $activeFilters[$specKey] = $values;
+        $placeholders = implode(',', array_fill(0, count($values), '?'));
+        $query .= " AND EXISTS (\n            SELECT 1 FROM product_specs psf\n            JOIN product_specs_i18n psfi ON psfi.product_spec_id = psf.id AND psfi.locale = ?\n            WHERE psf.product_id = p.id\n              AND psf.spec_key = ?\n              AND psfi.value IN ($placeholders)\n        )";
+        $params[] = $language;
+        $params[] = $specKey;
+        array_push($params, ...$values);
+    }
+
     $query .= $sort === 'new'
         ? ' ORDER BY p.id DESC'
         : ' ORDER BY pi.name';
@@ -394,6 +409,7 @@ if ($route === 'products' && $param !== null && $subparam === null) {
     $products = $stmt->fetchAll();
     $productFacts = [];
     $productIds = array_column($products, 'id');
+    $productImages = [];
     if ($productIds) {
         $placeholders = implode(',', array_fill(0, count($productIds), '?'));
         $specStmt = db()->prepare(
@@ -410,6 +426,44 @@ if ($route === 'products' && $param !== null && $subparam === null) {
             }
             $productFacts[$spec['product_id']][] = trim($spec['name'] . ': ' . $spec['value']);
         }
+
+        $mediaStmt = db()->prepare(
+            "SELECT pm.product_id, m.path, m.alt_key
+             FROM product_media pm
+             JOIN media m ON m.id = pm.media_id
+             WHERE pm.product_id IN ($placeholders)
+             ORDER BY pm.is_primary DESC, pm.sort_order ASC"
+        );
+        $mediaStmt->execute($productIds);
+        foreach ($mediaStmt->fetchAll() as $media) {
+            if (!isset($productImages[$media['product_id']])) {
+                $productImages[$media['product_id']] = $media;
+            }
+        }
+    }
+
+    $availableFilters = [];
+    $specListStmt = db()->prepare(
+        'SELECT ps.spec_key, psi.name, psi.value
+         FROM product_specs ps
+         JOIN product_specs_i18n psi ON psi.product_spec_id = ps.id AND psi.locale = ?
+         JOIN products p ON p.id = ps.product_id
+         WHERE p.category_id = ?
+           AND p.is_active = 1
+         ORDER BY psi.name, psi.value'
+    );
+    $specListStmt->execute([$language, $category['id']]);
+    foreach ($specListStmt->fetchAll() as $row) {
+        $specKey = $row['spec_key'];
+        if (!isset($availableFilters[$specKey])) {
+            $availableFilters[$specKey] = [
+                'name' => $row['name'],
+                'values' => [],
+            ];
+        }
+        if (!in_array($row['value'], $availableFilters[$specKey]['values'], true)) {
+            $availableFilters[$specKey]['values'][] = $row['value'];
+        }
     }
 
     ob_start();
@@ -421,7 +475,7 @@ if ($route === 'products' && $param !== null && $subparam === null) {
             'meta_title' => $category['title'] ?? $category['name'],
             'meta_description' => $category['meta_description'] ?? $category['description'],
             'canonical' => config('base_url') . '/' . $language . '/products/' . $category['slug'] . '/',
-            'robots' => $hasFilters ? 'noindex,follow' : 'index,follow',
+            'robots' => 'index,follow',
             'og_title' => $category['title'] ?? $category['name'],
             'og_description' => $category['meta_description'] ?? $category['description'],
             'slug' => $category['slug'],
@@ -429,6 +483,9 @@ if ($route === 'products' && $param !== null && $subparam === null) {
         'category' => $category,
         'products' => $products,
         'productFacts' => $productFacts,
+        'productImages' => $productImages,
+        'availableFilters' => $availableFilters,
+        'activeFilters' => $activeFilters,
         'search' => $search,
         'sort' => $sort,
     ]);
@@ -487,6 +544,9 @@ if ($route === 'product' && $param !== null && $subparam === null) {
         exit;
     }
 
+    $product['display_name'] = format_product_name($product['name'], $product['sku'] ?? null);
+    $product['title'] = $product['display_name'];
+    $product['h1'] = $product['display_name'];
     $product['short_description'] = clean_product_text($product['short_description'] ?? '');
     $product['description'] = clean_product_text($product['description'] ?? '');
 
@@ -529,12 +589,12 @@ if ($route === 'product' && $param !== null && $subparam === null) {
     render('product-show', [
         'language' => $language,
         'page' => [
-            'title' => $product['title'] ?? $product['name'],
-            'h1' => $product['h1'] ?? $product['name'],
-            'meta_title' => $product['title'] ?? $product['name'],
+            'title' => $product['title'] ?? $product['display_name'],
+            'h1' => $product['h1'] ?? $product['display_name'],
+            'meta_title' => $product['title'] ?? $product['display_name'],
             'meta_description' => $product['meta_description'] ?? $product['short_description'],
             'canonical' => config('base_url') . '/' . $language . '/product/' . $product['slug'] . '/',
-            'og_title' => $product['title'] ?? $product['name'],
+            'og_title' => $product['title'] ?? $product['display_name'],
             'og_description' => $product['meta_description'] ?? $product['short_description'],
             'slug' => $product['slug'],
             'hreflang' => [

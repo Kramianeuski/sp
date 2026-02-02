@@ -1,3 +1,4 @@
+<?php $displayName = format_product_name($product['name'], $product['sku'] ?? null); ?>
 <section class="page-header">
     <div class="container">
         <nav class="breadcrumbs">
@@ -7,9 +8,9 @@
                 <?= htmlspecialchars($category['name'], ENT_QUOTES) ?>
             </a>
             <span>→</span>
-            <span><?= htmlspecialchars($product['name'], ENT_QUOTES) ?></span>
+            <span><?= htmlspecialchars($displayName, ENT_QUOTES) ?></span>
         </nav>
-        <h1><?= htmlspecialchars($product['h1'] ?? $product['name'], ENT_QUOTES) ?></h1>
+        <h1><?= htmlspecialchars($product['h1'] ?? $displayName, ENT_QUOTES) ?></h1>
         <p><?= htmlspecialchars($product['short_description'], ENT_QUOTES) ?></p>
     </div>
 </section>
@@ -50,6 +51,12 @@
                     <?php endif; ?>
                 </div>
                 <div class="product-details">
+                    <div class="product-meta">
+                        <?php if (!empty($product['sku'])) : ?>
+                            <span class="sku"><?= htmlspecialchars(t('product.sku', $language), ENT_QUOTES) ?> <?= htmlspecialchars($product['sku'], ENT_QUOTES) ?></span>
+                        <?php endif; ?>
+                        <span class="country-origin"><?= htmlspecialchars(t('product.country', $language), ENT_QUOTES) ?></span>
+                    </div>
                     <?php if (!empty($specs)) : ?>
                         <div class="product-specs">
                             <h2><?= htmlspecialchars(t('product.specs_title', $language), ENT_QUOTES) ?></h2>
@@ -95,10 +102,16 @@
             </div>
             <div class="product-description">
                 <h2><?= htmlspecialchars(t('product.description_title', $language), ENT_QUOTES) ?></h2>
-                <?php if (!empty($product['is_html'])) : ?>
-                    <div class="text-block"><?= $product['description'] ?></div>
-                <?php else : ?>
-                    <p><?= nl2br(htmlspecialchars($product['description'], ENT_QUOTES)) ?></p>
+                <div class="text-block"><?= format_product_description($product['description'] ?? '') ?></div>
+                <?php $faqItems = category_faq($category['code'] ?? '', $language); ?>
+                <?php if ($faqItems) : ?>
+                    <div class="faq-block">
+                        <h2><?= htmlspecialchars(t('faq.title', $language), ENT_QUOTES) ?></h2>
+                        <?php foreach ($faqItems as $item) : ?>
+                            <h3><?= htmlspecialchars($item['question'], ENT_QUOTES) ?></h3>
+                            <p><?= htmlspecialchars($item['answer'], ENT_QUOTES) ?></p>
+                        <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -108,7 +121,7 @@
 <?= json_encode([
     '@context' => 'https://schema.org',
     '@type' => 'Product',
-    'name' => $product['name'],
+    'name' => $displayName,
     'description' => strip_tags($product['description'] ?? ''),
     'image' => array_map(static fn(array $img) => config('base_url') . $img['path'], $images),
     'sku' => $product['sku'] ?? '',
@@ -118,6 +131,22 @@
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?>
 </script>
+<?php if (!empty($faqItems)) : ?>
+<script type="application/ld+json">
+<?= json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'FAQPage',
+    'mainEntity' => array_map(static fn(array $item) => [
+        '@type' => 'Question',
+        'name' => $item['question'],
+        'acceptedAnswer' => [
+            '@type' => 'Answer',
+            'text' => $item['answer'],
+        ],
+    ], $faqItems),
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?>
+</script>
+<?php endif; ?>
 <?php if ($hasMultipleImages) : ?>
 <script>
     const gallery = document.querySelector('[data-product-gallery]');
