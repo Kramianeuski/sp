@@ -26,6 +26,10 @@
                     <p><?= htmlspecialchars(t('contacts.address', $language), ENT_QUOTES) ?></p>
                 </div>
                 <div class="contact-item">
+                    <span><?= htmlspecialchars(t('contacts.legal_label', $language), ENT_QUOTES) ?></span>
+                    <div><?= nl2br(htmlspecialchars(t('contacts.legal_text', $language), ENT_QUOTES)) ?></div>
+                </div>
+                <div class="contact-item">
                     <span class="sr-only"><?= htmlspecialchars(t('contacts.telegram_label', $language), ENT_QUOTES) ?></span>
                     <a class="telegram-icon" href="https://t.me/<?= htmlspecialchars(ltrim(t('contacts.telegram', $language), '@'), ENT_QUOTES) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= htmlspecialchars(t('contacts.telegram_label', $language), ENT_QUOTES) ?>">
                         <svg viewBox="0 0 24 24" aria-hidden="true">

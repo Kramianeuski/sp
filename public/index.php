@@ -92,6 +92,7 @@ if ($path === '/robots.txt') {
 
     echo "User-agent: *\n";
     echo "Disallow: /admin/\n";
+    echo "Allow: /\n";
     echo "Sitemap: " . config('base_url') . "/sitemap.xml\n";
     exit;
 }
@@ -184,7 +185,13 @@ if ($route === 'custom-production' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $telegram = trim($_POST['telegram'] ?? '');
     $whatsapp = trim($_POST['whatsapp'] ?? '');
-    $preferredContact = $_POST['preferred_contact'] ?? '';
+    $channels = [];
+    foreach (['phone', 'telegram', 'whatsapp', 'email'] as $channel) {
+        if (isset($_POST['channel_' . $channel])) {
+            $channels[] = $channel;
+        }
+    }
+    $preferredContact = implode(',', $channels);
     $message = trim($_POST['message'] ?? '');
     $consent = isset($_POST['consent']) ? 1 : 0;
     $honeypot = trim($_POST['website'] ?? '');
@@ -203,23 +210,29 @@ if ($route === 'custom-production' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors['full_name'] = t('form.error.full_name', $language);
     }
 
-    $contactFields = [
-        'phone' => $phone,
-        'email' => $email,
-        'telegram' => $telegram,
-        'whatsapp' => $whatsapp,
-    ];
+    if ($email === '') {
+        $errors['email'] = t('form.error.email_required', $language);
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors['email'] = t('form.error.email', $language);
+    }
 
-    if ($preferredContact === '' || !in_array($preferredContact, ['phone', 'email', 'telegram', 'whatsapp'], true)) {
-        $errors['preferred_contact'] = t('form.error.preferred', $language);
-    } else {
-        $selectedValue = $contactFields[$preferredContact] ?? '';
-        if ($selectedValue === '') {
-            $errors['contact'] = t('form.error.contact', $language);
-        } elseif ($preferredContact === 'email' && !filter_var($selectedValue, FILTER_VALIDATE_EMAIL)) {
-            $errors['contact'] = t('form.error.email', $language);
-        } elseif ($preferredContact === 'telegram' && !str_starts_with($selectedValue, '@')) {
-            $errors['contact'] = t('form.error.telegram', $language);
+    if (empty($channels)) {
+        $errors['channels'] = t('form.error.contact', $language);
+    }
+
+    if (in_array('phone', $channels, true) && $phone === '') {
+        $errors['phone'] = t('form.error.contact', $language);
+    }
+
+    if (in_array('whatsapp', $channels, true) && $whatsapp === '') {
+        $errors['whatsapp'] = t('form.error.contact', $language);
+    }
+
+    if (in_array('telegram', $channels, true)) {
+        if ($telegram === '') {
+            $errors['telegram'] = t('form.error.contact', $language);
+        } elseif (!str_starts_with($telegram, '@')) {
+            $errors['telegram'] = t('form.error.telegram', $language);
         }
     }
 
@@ -263,7 +276,7 @@ if ($route === 'custom-production' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         'email' => $email,
         'telegram' => $telegram,
         'whatsapp' => $whatsapp,
-        'preferred_contact' => $preferredContact,
+        'channels' => $channels,
         'message' => $message,
         'consent' => $consent,
     ];

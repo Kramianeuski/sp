@@ -84,3 +84,53 @@ SET description = REPLACE(
     ''
 )
 WHERE entity_type = 'product';
+
+INSERT INTO pages (slug, status)
+VALUES ('privacy-policy', 'published')
+ON DUPLICATE KEY UPDATE status = VALUES(status);
+
+SELECT id INTO @privacy_page_id FROM pages WHERE slug = 'privacy-policy';
+
+DELETE FROM page_sections WHERE page_id = @privacy_page_id;
+
+INSERT INTO page_sections (page_id, section_key, sort_order, template, data_json, created_at, updated_at)
+VALUES
+    (@privacy_page_id, 'privacy-content', 1, 'text_block', '{"title_key": "privacy.title", "text_key": "privacy.text"}', NOW(), NOW());
+
+INSERT INTO seo_meta (entity_type, entity_id, locale, title, description, h1, slug, canonical, created_at, updated_at)
+VALUES
+    ('page', @privacy_page_id, 'ru', 'Политика конфиденциальности', 'Правила обработки персональных данных System Power.', 'Политика конфиденциальности', 'privacy-policy', NULL, NOW(), NOW()),
+    ('page', @privacy_page_id, 'en', 'Privacy Policy', 'Personal data processing policy for System Power.', 'Privacy Policy', 'privacy-policy', NULL, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    description = VALUES(description),
+    h1 = VALUES(h1),
+    slug = VALUES(slug),
+    canonical = VALUES(canonical),
+    updated_at = VALUES(updated_at);
+
+INSERT INTO i18n_strings (`key`, locale, value, is_html)
+VALUES
+    ('filters.toggle', 'ru', 'Фильтры', 0),
+    ('filters.toggle', 'en', 'Filters', 0),
+    ('filters.close', 'ru', 'Закрыть', 0),
+    ('filters.close', 'en', 'Close', 0),
+    ('footer.privacy', 'ru', 'Политика конфиденциальности', 0),
+    ('footer.privacy', 'en', 'Privacy policy', 0),
+    ('form.privacy_link', 'ru', 'Политикой конфиденциальности', 0),
+    ('form.privacy_link', 'en', 'Privacy policy', 0),
+    ('contacts.legal_label', 'ru', 'Юридическая информация', 0),
+    ('contacts.legal_label', 'en', 'Legal information', 0),
+    ('contacts.legal_text', 'ru', "ООО «Системные Решения»\nИНН: 6950156688\nКПП: 673201001", 0),
+    ('contacts.legal_text', 'en', "System Solutions LLC\nINN: 6950156688\nKPP: 673201001", 0),
+    ('form.error.email_required', 'ru', 'Введите адрес электронной почты.', 0),
+    ('form.error.email_required', 'en', 'Enter your email address.', 0),
+    ('privacy.title', 'ru', 'Политика конфиденциальности', 0),
+    ('privacy.title', 'en', 'Privacy Policy', 0),
+    ('privacy.text', 'ru', '<p>Мы собираем и обрабатываем персональные данные только для связи по вашему запросу и предоставления информации о продукции System Power.</p><p>Мы не передаем ваши данные третьим лицам без законных оснований и обеспечиваем их защиту.</p><p>Вы можете отозвать согласие на обработку данных, написав нам по контактному email.</p>', 1),
+    ('privacy.text', 'en', '<p>We collect and process personal data only to respond to your inquiry and provide information about System Power products.</p><p>We do not share your data with third parties without legal grounds and keep it protected.</p><p>You can withdraw your consent by contacting us via the email listed in the contacts section.</p>', 1)
+ON DUPLICATE KEY UPDATE value = VALUES(value), is_html = VALUES(is_html);
+
+UPDATE partner_i18n
+SET description = 'Petrovich is a large Russian building materials retailer. Suitable for purchases through a familiar DIY platform with logistics and a wide assortment. As a sales channel it provides access to private contractors, crews, and corporate buyers.'
+WHERE partner_id = 3 AND locale = 'en';

@@ -19,10 +19,14 @@ foreach ($items as $item) {
             <?php if ($titleKey) : ?>
                 <h2><?= htmlspecialchars(t($titleKey, $language), ENT_QUOTES) ?></h2>
             <?php endif; ?>
-            <?php foreach ($faqItems as $item) : ?>
-                <h3><?= htmlspecialchars($item['question'], ENT_QUOTES) ?></h3>
-                <p><?= htmlspecialchars($item['answer'], ENT_QUOTES) ?></p>
-            <?php endforeach; ?>
+            <div class="faq">
+                <?php foreach ($faqItems as $item) : ?>
+                    <details class="faq-item">
+                        <summary><?= htmlspecialchars($item['question'], ENT_QUOTES) ?></summary>
+                        <div class="faq-content"><?= htmlspecialchars($item['answer'], ENT_QUOTES) ?></div>
+                    </details>
+                <?php endforeach; ?>
+            </div>
         </div>
     </div>
 </section>
