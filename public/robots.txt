@@ -1,5 +1,7 @@
 User-agent: *
 Disallow: /admin/
+Disallow: /api/
+Disallow: /*?*
 Allow: /
 
-Sitemap: /sitemap.xml
+Sitemap: https://system-power.ru/sitemap.xml

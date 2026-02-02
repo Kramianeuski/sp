@@ -327,6 +327,18 @@ if (isset($segments[1])) {
     const faqContainers = document.querySelectorAll('.faq');
     faqContainers.forEach((container) => {
         const items = Array.from(container.querySelectorAll('details'));
+        const syncContent = (item) => {
+            const content = item.querySelector('.faq-content');
+            if (!content) {
+                return;
+            }
+            if (item.open) {
+                content.style.maxHeight = `${content.scrollHeight}px`;
+            } else {
+                content.style.maxHeight = '0px';
+            }
+        };
+        items.forEach((item) => syncContent(item));
         items.forEach((item) => {
             item.addEventListener('toggle', () => {
                 if (item.open) {
@@ -336,8 +348,10 @@ if (isset($segments[1])) {
                         }
                     });
                 }
+                items.forEach((entry) => syncContent(entry));
             });
         });
+        window.addEventListener('resize', () => items.forEach((item) => syncContent(item)));
     });
 
     const filtersToggle = document.querySelector('[data-filters-toggle]');
