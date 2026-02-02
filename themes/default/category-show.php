@@ -13,6 +13,25 @@
 </section>
 <section class="section">
     <div class="container">
+        <div class="category-description">
+            <?php if (!empty($category['description'])) : ?>
+                <?php if (!empty($category['is_html'])) : ?>
+                    <div class="text-block"><?= $category['description'] ?></div>
+                <?php else : ?>
+                    <p><?= nl2br(htmlspecialchars($category['description'], ENT_QUOTES)) ?></p>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
+        <?php $faqItems = category_faq($category['code'] ?? '', $language); ?>
+        <?php if ($faqItems) : ?>
+            <div class="faq-block">
+                <h2><?= htmlspecialchars(t('faq.title', $language), ENT_QUOTES) ?></h2>
+                <?php foreach ($faqItems as $item) : ?>
+                    <h3><?= htmlspecialchars($item['question'], ENT_QUOTES) ?></h3>
+                    <p><?= htmlspecialchars($item['answer'], ENT_QUOTES) ?></p>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
         <form class="filters" method="get">
             <div class="field">
                 <label><?= htmlspecialchars(t('filters.search_label', $language), ENT_QUOTES) ?></label>
@@ -25,6 +44,22 @@
                     <option value="new" <?= $sort === 'new' ? 'selected' : '' ?>><?= htmlspecialchars(t('filters.sort_new', $language), ENT_QUOTES) ?></option>
                 </select>
             </div>
+            <?php foreach ($availableFilters as $specKey => $filter) : ?>
+                <div class="field">
+                    <span class="filters-title"><?= htmlspecialchars($filter['name'], ENT_QUOTES) ?></span>
+                    <div class="filter-options">
+                        <?php foreach ($filter['values'] as $value) : ?>
+                            <?php
+                            $checked = in_array($value, $activeFilters[$specKey] ?? [], true);
+                            ?>
+                            <label>
+                                <input type="checkbox" name="filters[<?= htmlspecialchars($specKey, ENT_QUOTES) ?>][]" value="<?= htmlspecialchars($value, ENT_QUOTES) ?>" <?= $checked ? 'checked' : '' ?>>
+                                <?= htmlspecialchars($value, ENT_QUOTES) ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
             <button class="btn btn-ghost" type="submit"><?= htmlspecialchars(t('filters.apply', $language), ENT_QUOTES) ?></button>
         </form>
         <div class="product-grid">
@@ -32,9 +67,17 @@
                 <p><?= htmlspecialchars(t('products.empty', $language), ENT_QUOTES) ?></p>
             <?php endif; ?>
             <?php foreach ($products as $index => $product) : ?>
+                <?php $displayName = format_product_name($product['name'], $product['sku'] ?? null); ?>
                 <a class="product-card" href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/product/<?= htmlspecialchars($product['slug'], ENT_QUOTES) ?>/">
+                    <div class="product-card-media">
+                        <?php if (!empty($productImages[$product['id']]['path'])) : ?>
+                            <img src="<?= htmlspecialchars($productImages[$product['id']]['path'], ENT_QUOTES) ?>" alt="<?= htmlspecialchars($displayName, ENT_QUOTES) ?>" loading="lazy">
+                        <?php else : ?>
+                            <img src="/themes/default/placeholder-product.svg" alt="<?= htmlspecialchars($displayName, ENT_QUOTES) ?>" loading="lazy">
+                        <?php endif; ?>
+                    </div>
                     <div class="product-card-content">
-                        <h3><?= htmlspecialchars($product['name'], ENT_QUOTES) ?></h3>
+                        <h3><?= htmlspecialchars($displayName, ENT_QUOTES) ?></h3>
                         <p><?= htmlspecialchars($product['short_description'], ENT_QUOTES) ?></p>
                         <?php if (!empty($productFacts[$product['id']])) : ?>
                             <ul>
@@ -50,3 +93,19 @@
         </div>
     </div>
 </section>
+<?php if (!empty($faqItems)) : ?>
+<script type="application/ld+json">
+<?= json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'FAQPage',
+    'mainEntity' => array_map(static fn(array $item) => [
+        '@type' => 'Question',
+        'name' => $item['question'],
+        'acceptedAnswer' => [
+            '@type' => 'Answer',
+            'text' => $item['answer'],
+        ],
+    ], $faqItems),
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?>
+</script>
+<?php endif; ?>

@@ -161,6 +161,10 @@ if (isset($segments[1])) {
                     <?= htmlspecialchars($brandName, ENT_QUOTES) ?>
                 <?php endif; ?>
             </a>
+            <div class="logo-slogan">
+                <p class="slogan"><?= htmlspecialchars(t('header.slogan', $language), ENT_QUOTES) ?></p>
+                <p><?= htmlspecialchars(t('header.slogan_sub', $language), ENT_QUOTES) ?></p>
+            </div>
         </div>
         <button class="nav-toggle" type="button" aria-label="<?= htmlspecialchars(t('nav.toggle', $language), ENT_QUOTES) ?>" aria-expanded="false" aria-controls="site-nav">
             <span></span>

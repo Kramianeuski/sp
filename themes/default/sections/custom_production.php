@@ -12,16 +12,22 @@ unset($_SESSION['lead_success'], $_SESSION['lead_errors'], $_SESSION['lead_old']
     <div class="container">
         <div class="custom-production">
             <div>
-                <h2><?= htmlspecialchars(t($titleKey, $language), ENT_QUOTES) ?></h2>
-                <p><?= htmlspecialchars(t($introKey, $language), ENT_QUOTES) ?></p>
-                <div class="custom-process">
-                    <h3><?= htmlspecialchars(t($processTitleKey, $language), ENT_QUOTES) ?></h3>
-                    <ol>
-                        <?php foreach ($steps as $stepKey) : ?>
-                            <li><?= htmlspecialchars(t($stepKey, $language), ENT_QUOTES) ?></li>
-                        <?php endforeach; ?>
-                    </ol>
-                </div>
+                <?php if ($titleKey) : ?>
+                    <h2><?= htmlspecialchars(t($titleKey, $language), ENT_QUOTES) ?></h2>
+                <?php endif; ?>
+                <?php if ($introKey) : ?>
+                    <p><?= htmlspecialchars(t($introKey, $language), ENT_QUOTES) ?></p>
+                <?php endif; ?>
+                <?php if ($processTitleKey && $steps) : ?>
+                    <div class="custom-process">
+                        <h3><?= htmlspecialchars(t($processTitleKey, $language), ENT_QUOTES) ?></h3>
+                        <ol>
+                            <?php foreach ($steps as $stepKey) : ?>
+                                <li><?= htmlspecialchars(t($stepKey, $language), ENT_QUOTES) ?></li>
+                            <?php endforeach; ?>
+                        </ol>
+                    </div>
+                <?php endif; ?>
             </div>
             <form class="form-card" method="post" action="">
                 <input type="text" name="website" value="" class="sr-only" tabindex="-1" autocomplete="off">
@@ -39,32 +45,9 @@ unset($_SESSION['lead_success'], $_SESSION['lead_errors'], $_SESSION['lead_old']
                     <?php endif; ?>
                 </div>
                 <div class="field">
-                    <label><?= htmlspecialchars(t('form.company', $language), ENT_QUOTES) ?></label>
-                    <input type="text" name="company" value="<?= htmlspecialchars($old['company'] ?? '', ENT_QUOTES) ?>">
-                </div>
-                <div class="field">
-                    <label><?= htmlspecialchars(t('form.phone', $language), ENT_QUOTES) ?></label>
-                    <input type="text" name="phone" value="<?= htmlspecialchars($old['phone'] ?? '', ENT_QUOTES) ?>">
-                </div>
-                <div class="field">
-                    <label><?= htmlspecialchars(t('form.email', $language), ENT_QUOTES) ?></label>
-                    <input type="email" name="email" value="<?= htmlspecialchars($old['email'] ?? '', ENT_QUOTES) ?>">
-                </div>
-                <div class="field">
-                    <label><?= htmlspecialchars(t('form.telegram', $language), ENT_QUOTES) ?></label>
-                    <input type="text" name="telegram" value="<?= htmlspecialchars($old['telegram'] ?? '', ENT_QUOTES) ?>">
-                </div>
-                <div class="field">
-                    <label><?= htmlspecialchars(t('form.whatsapp', $language), ENT_QUOTES) ?></label>
-                    <input type="text" name="whatsapp" value="<?= htmlspecialchars($old['whatsapp'] ?? '', ENT_QUOTES) ?>">
-                </div>
-                <?php if (!empty($errors['contact'])) : ?>
-                    <span class="field-error"><?= htmlspecialchars($errors['contact'], ENT_QUOTES) ?></span>
-                <?php endif; ?>
-                <div class="field">
                     <label><?= htmlspecialchars(t('form.preferred_contact', $language), ENT_QUOTES) ?></label>
                     <div class="radio-group">
-                        <?php foreach (['email', 'telegram', 'whatsapp', 'phone'] as $option) : ?>
+                        <?php foreach (['phone', 'telegram', 'whatsapp', 'email'] as $option) : ?>
                             <label>
                                 <input type="radio" name="preferred_contact" value="<?= htmlspecialchars($option, ENT_QUOTES) ?>" <?= ($old['preferred_contact'] ?? '') === $option ? 'checked' : '' ?>>
                                 <?= htmlspecialchars(t('form.preferred_' . $option, $language), ENT_QUOTES) ?>
@@ -75,6 +58,26 @@ unset($_SESSION['lead_success'], $_SESSION['lead_errors'], $_SESSION['lead_old']
                         <span class="field-error"><?= htmlspecialchars($errors['preferred_contact'], ENT_QUOTES) ?></span>
                     <?php endif; ?>
                 </div>
+                <div class="field contact-field" data-contact="phone" hidden>
+                    <label><?= htmlspecialchars(t('form.phone', $language), ENT_QUOTES) ?></label>
+                    <input type="tel" name="phone" value="<?= htmlspecialchars($old['phone'] ?? '', ENT_QUOTES) ?>">
+                </div>
+                <div class="field contact-field" data-contact="telegram" hidden>
+                    <label><?= htmlspecialchars(t('form.telegram', $language), ENT_QUOTES) ?></label>
+                    <input type="text" name="telegram" value="<?= htmlspecialchars($old['telegram'] ?? '', ENT_QUOTES) ?>" placeholder="<?= htmlspecialchars(t('form.telegram_placeholder', $language), ENT_QUOTES) ?>">
+                    <span class="field-hint"><?= htmlspecialchars(t('form.telegram_hint', $language), ENT_QUOTES) ?></span>
+                </div>
+                <div class="field contact-field" data-contact="whatsapp" hidden>
+                    <label><?= htmlspecialchars(t('form.whatsapp', $language), ENT_QUOTES) ?></label>
+                    <input type="tel" name="whatsapp" value="<?= htmlspecialchars($old['whatsapp'] ?? '', ENT_QUOTES) ?>">
+                </div>
+                <div class="field contact-field" data-contact="email" hidden>
+                    <label><?= htmlspecialchars(t('form.email', $language), ENT_QUOTES) ?></label>
+                    <input type="email" name="email" value="<?= htmlspecialchars($old['email'] ?? '', ENT_QUOTES) ?>">
+                </div>
+                <?php if (!empty($errors['contact'])) : ?>
+                    <span class="field-error"><?= htmlspecialchars($errors['contact'], ENT_QUOTES) ?></span>
+                <?php endif; ?>
                 <div class="field">
                     <label><?= htmlspecialchars(t('form.message', $language), ENT_QUOTES) ?></label>
                     <textarea name="message" rows="4"><?= htmlspecialchars($old['message'] ?? '', ENT_QUOTES) ?></textarea>
@@ -106,3 +109,16 @@ unset($_SESSION['lead_success'], $_SESSION['lead_errors'], $_SESSION['lead_old']
         </div>
     </div>
 </section>
+<script>
+    const contactRadios = document.querySelectorAll('input[name="preferred_contact"]');
+    const contactFields = document.querySelectorAll('.contact-field');
+    const updateContactFields = () => {
+        const selected = document.querySelector('input[name="preferred_contact"]:checked')?.value;
+        contactFields.forEach((field) => {
+            const isActive = field.dataset.contact === selected;
+            field.hidden = !isActive;
+        });
+    };
+    contactRadios.forEach((radio) => radio.addEventListener('change', updateContactFields));
+    updateContactFields();
+</script>
