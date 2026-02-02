@@ -24,7 +24,5 @@
 - Для ежедневной генерации статической копии sitemap на Ubuntu можно добавить в cron:
 
 ```bash
-0 3 * * * curl -sS https://example.com/sitemap.xml -o /var/www/system-power/public/sitemap.xml
+15 3 * * * php /var/www/system-power/scripts/generate_sitemap.php >/dev/null 2>&1
 ```
-
-> Замените `example.com` и путь на актуальные для вашего сервера.

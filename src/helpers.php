@@ -242,32 +242,35 @@ function clean_product_text(string $text): string
     return trim($cleaned);
 }
 
-function format_product_description(string $text): string
+function format_product_description(string $text, string $language = 'ru'): string
 {
-    if (preg_match('/<\/(p|ul|ol|table|h2|h3)>/i', $text)) {
+    if (preg_match('/<\/(p|ul|ol|table|h2|h3|section)>/i', $text)) {
         return $text;
     }
 
     $text = str_replace(["\r\n", "\r"], "\n", $text);
 
-    $headings = [
-        'Технические характеристики',
-        'Технические параметры',
-        'Преимущества',
-        'Назначение',
-        'Конструкция и особенности',
-        'Комплект поставки',
-        'Дополнительная информация',
-        'Technical specifications',
-        'Technical parameters',
-        'Advantages',
-        'Purpose',
-        'Design and features',
-        'Package contents',
-        'Additional information',
-    ];
+    $headingMap = $language === 'en'
+        ? [
+            'Technical specifications' => 'Technical parameters',
+            'Technical parameters' => 'Technical parameters',
+            'Advantages' => 'Advantages',
+            'Purpose' => 'Purpose',
+            'Design and features' => 'Technical parameters',
+            'Package contents' => 'Package contents',
+            'Additional information' => 'Technical parameters',
+        ]
+        : [
+            'Технические характеристики' => 'Технические параметры',
+            'Технические параметры' => 'Технические параметры',
+            'Преимущества' => 'Преимущества',
+            'Назначение' => 'Назначение',
+            'Конструкция и особенности' => 'Технические параметры',
+            'Комплект поставки' => 'Комплект поставки',
+            'Дополнительная информация' => 'Технические параметры',
+        ];
 
-    foreach ($headings as $heading) {
+    foreach (array_keys($headingMap) as $heading) {
         $pattern = '/\b' . preg_quote($heading, '/') . '\b/u';
         $text = preg_replace($pattern, "\n\n## " . $heading . "\n", $text);
     }
@@ -278,7 +281,9 @@ function format_product_description(string $text): string
     $text = preg_replace('/\s{2,}/u', ' ', $text);
 
     $blocks = preg_split('/\n{2,}/', trim($text));
-    $html = [];
+    $sections = [];
+    $currentTitle = null;
+    $currentBlocks = [];
 
     foreach ($blocks as $block) {
         $block = trim($block);
@@ -286,31 +291,48 @@ function format_product_description(string $text): string
             continue;
         }
         if (str_starts_with($block, '## ')) {
-            $title = trim(mb_substr($block, 3));
-            if ($title !== '') {
-                $html[] = '<h3>' . htmlspecialchars($title, ENT_QUOTES) . '</h3>';
+            if ($currentTitle !== null || $currentBlocks) {
+                $sections[] = [$currentTitle, $currentBlocks];
             }
+            $title = trim(mb_substr($block, 3));
+            $currentTitle = $headingMap[$title] ?? $title;
+            $currentBlocks = [];
             continue;
         }
 
-        $lines = array_values(array_filter(array_map('trim', explode("\n", $block)), static fn($line) => $line !== ''));
-        $listItems = [];
-        foreach ($lines as $line) {
-            if (str_starts_with($line, '- ')) {
-                $listItems[] = mb_substr($line, 2);
-            }
-        }
-
-        if ($listItems) {
-            $itemsHtml = array_map(static fn($item) => '<li>' . htmlspecialchars($item, ENT_QUOTES) . '</li>', $listItems);
-            $html[] = '<ul>' . implode('', $itemsHtml) . '</ul>';
-        } else {
-            $paragraph = htmlspecialchars(implode(' ', $lines), ENT_QUOTES);
-            $html[] = '<p>' . $paragraph . '</p>';
-        }
+        $currentBlocks[] = $block;
     }
 
-    return implode("\n", $html);
+    if ($currentTitle !== null || $currentBlocks) {
+        $sections[] = [$currentTitle, $currentBlocks];
+    }
+
+    $htmlSections = [];
+    foreach ($sections as [$title, $sectionBlocks]) {
+        $sectionHtml = [];
+        if ($title) {
+            $sectionHtml[] = '<h2>' . htmlspecialchars($title, ENT_QUOTES) . '</h2>';
+        }
+        foreach ($sectionBlocks as $block) {
+            $lines = array_values(array_filter(array_map('trim', explode("\n", $block)), static fn($line) => $line !== ''));
+            $listItems = [];
+            foreach ($lines as $line) {
+                if (str_starts_with($line, '- ')) {
+                    $listItems[] = mb_substr($line, 2);
+                }
+            }
+            if ($listItems) {
+                $itemsHtml = array_map(static fn($item) => '<li>' . htmlspecialchars($item, ENT_QUOTES) . '</li>', $listItems);
+                $sectionHtml[] = '<ul>' . implode('', $itemsHtml) . '</ul>';
+            } else {
+                $paragraph = htmlspecialchars(implode(' ', $lines), ENT_QUOTES);
+                $sectionHtml[] = '<p>' . $paragraph . '</p>';
+            }
+        }
+        $htmlSections[] = '<section class="product-desc-section">' . implode("\n", $sectionHtml) . '</section>';
+    }
+
+    return implode("\n", $htmlSections);
 }
 
 function category_faq(string $categoryCode, string $language): array

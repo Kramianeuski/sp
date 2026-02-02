@@ -102,7 +102,7 @@
             </div>
             <div class="product-description">
                 <h2><?= htmlspecialchars(t('product.description_title', $language), ENT_QUOTES) ?></h2>
-                <div class="text-block"><?= format_product_description($product['description'] ?? '') ?></div>
+                <div class="text-block"><?= format_product_description($product['description'] ?? '', $language) ?></div>
                 <?php $faqItems = category_faq($category['code'] ?? '', $language); ?>
                 <?php if ($faqItems) : ?>
                     <div class="faq-block">
@@ -173,13 +173,18 @@
                 }
             });
         };
-        const goNext = () => {
-            index = (index + 1) % slides.length;
+        const setIndex = (nextIndex) => {
+            if (!slides.length) {
+                return;
+            }
+            index = (nextIndex + slides.length) % slides.length;
             update();
         };
+        const goNext = () => {
+            setIndex(index + 1);
+        };
         const goPrev = () => {
-            index = (index - 1 + slides.length) % slides.length;
-            update();
+            setIndex(index - 1);
         };
         prevButton?.addEventListener('click', goPrev);
         nextButton?.addEventListener('click', goNext);
@@ -187,8 +192,7 @@
             thumb.addEventListener('click', () => {
                 const nextIndex = Number(thumb.dataset.galleryThumb || 0);
                 if (!Number.isNaN(nextIndex)) {
-                    index = nextIndex;
-                    update();
+                    setIndex(nextIndex);
                 }
             });
         });
@@ -214,6 +218,20 @@
             }
             isDragging = false;
         });
+        const descSections = Array.from(document.querySelectorAll('.product-description section'));
+        if ('IntersectionObserver' in window && descSections.length > 0) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        const sectionIndex = descSections.indexOf(entry.target);
+                        if (sectionIndex >= 0) {
+                            setIndex(sectionIndex % slides.length);
+                        }
+                    }
+                });
+            }, { rootMargin: '-20% 0px -50% 0px', threshold: 0.4 });
+            descSections.forEach((section) => observer.observe(section));
+        }
         update();
     }
 </script>

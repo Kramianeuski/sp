@@ -92,8 +92,10 @@ if ($path === '/robots.txt') {
 
     echo "User-agent: *\n";
     echo "Disallow: /admin/\n";
+    echo "Disallow: /api/\n";
+    echo "Disallow: /*?*\n";
     echo "Allow: /\n";
-    echo "Sitemap: " . config('base_url') . "/sitemap.xml\n";
+    echo "Sitemap: https://system-power.ru/sitemap.xml\n";
     exit;
 }
 
