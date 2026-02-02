@@ -79,6 +79,17 @@ SET @smartshop_small := LAST_INSERT_ID();
 INSERT INTO media (path, type, mime, created_at, updated_at) VALUES
     ('/storage/uploads/partners/smartshop_large.png','image','image/png',NOW(),NOW());
 SET @smartshop_large := LAST_INSERT_ID();
+SET @has_logo := (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'partners'
+      AND COLUMN_NAME = 'logo_media_id'
+);
+SET @sql := IF(@has_logo = 0, 'ALTER TABLE partners ADD COLUMN logo_media_id int DEFAULT NULL', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 INSERT INTO partners (id, type, name, city, url, sort_order, is_active, logo_media_id, logo_small_media_id, logo_large_media_id, created_at, updated_at)
 VALUES
