@@ -31,6 +31,7 @@ $gradient = !empty($data['gradient']);
     <div class="container">
         <div class="hero-content">
             <h1><?= htmlspecialchars(t($titleKey, $language), ENT_QUOTES) ?></h1>
+            <p class="hero-tagline"><?= htmlspecialchars(t('header.slogan', $language), ENT_QUOTES) ?></p>
             <p class="hero-subtitle"><?= htmlspecialchars(t($subtitleKey, $language), ENT_QUOTES) ?></p>
             <div class="hero-actions">
                 <?php if (!empty($ctaPrimary['text_key'])) : ?>

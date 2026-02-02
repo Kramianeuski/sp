@@ -161,10 +161,6 @@ if (isset($segments[1])) {
                     <?= htmlspecialchars($brandName, ENT_QUOTES) ?>
                 <?php endif; ?>
             </a>
-            <div class="logo-slogan">
-                <p class="slogan"><?= htmlspecialchars(t('header.slogan', $language), ENT_QUOTES) ?></p>
-                <p><?= htmlspecialchars(t('header.slogan_sub', $language), ENT_QUOTES) ?></p>
-            </div>
         </div>
         <button class="nav-toggle" type="button" aria-label="<?= htmlspecialchars(t('nav.toggle', $language), ENT_QUOTES) ?>" aria-expanded="false" aria-controls="site-nav">
             <span></span>
@@ -247,6 +243,9 @@ if (isset($segments[1])) {
                     <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/contacts/">
                         <?= htmlspecialchars(t('nav.contacts', $language), ENT_QUOTES) ?>
                     </a>
+                    <a href="/<?= htmlspecialchars($language, ENT_QUOTES) ?>/privacy-policy/">
+                        <?= htmlspecialchars(t('footer.privacy', $language), ENT_QUOTES) ?>
+                    </a>
                 </div>
             </div>
             <div>
@@ -324,6 +323,31 @@ if (isset($segments[1])) {
     };
     window.addEventListener('scroll', onScroll);
     onScroll();
+
+    const faqContainers = document.querySelectorAll('.faq');
+    faqContainers.forEach((container) => {
+        const items = Array.from(container.querySelectorAll('details'));
+        items.forEach((item) => {
+            item.addEventListener('toggle', () => {
+                if (item.open) {
+                    items.forEach((other) => {
+                        if (other !== item) {
+                            other.removeAttribute('open');
+                        }
+                    });
+                }
+            });
+        });
+    });
+
+    const filtersToggle = document.querySelector('[data-filters-toggle]');
+    const filtersClose = document.querySelector('[data-filters-close]');
+    const filtersOverlay = document.querySelector('[data-filters-overlay]');
+    const closeFilters = () => document.body.classList.remove('filters-open');
+    const openFilters = () => document.body.classList.add('filters-open');
+    filtersToggle?.addEventListener('click', openFilters);
+    filtersClose?.addEventListener('click', closeFilters);
+    filtersOverlay?.addEventListener('click', closeFilters);
 
     const heroVideo = document.querySelector('[data-hero-video]');
     const playButton = document.querySelector('[data-hero-play]');
