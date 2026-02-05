@@ -123,6 +123,28 @@ if (preg_match('/\.php(?:\/|$)/i', $path) === 1) {
 
 /*
 |--------------------------------------------------------------------------
+| Reject invalid/system paths
+|--------------------------------------------------------------------------
+*/
+
+$blockedPrefixes = ['sdk', 'api', 'wp', 'wordpress'];
+
+foreach ($blockedPrefixes as $prefix) {
+    if ($lowerPath === '/' . $prefix || str_starts_with($lowerPath, '/' . $prefix . '/')) {
+        http_response_code(404);
+        echo 'Not Found';
+        exit;
+    }
+}
+
+if (preg_match('/\.php(?:\/|$)/i', $path) === 1) {
+    http_response_code(404);
+    echo 'Not Found';
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
 | Split segments
 |--------------------------------------------------------------------------
 */
